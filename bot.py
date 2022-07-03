@@ -17,6 +17,7 @@ load_dotenv()
 intents = discord.Intents.all()
 
 bot = bridge.Bot(command_prefix = commands.when_mentioned_or("k!"), intents = intents)
+bot.remove_command("help")
 
 @bot.event
 async def on_ready():
@@ -27,7 +28,7 @@ for filename in os.listdir("./cogs"):
 		bot.load_extension(f"cogs.{filename[:-3]}")
 		print(f"{filename} has been enabled.")
 
-@bot.bridge_command(description = "Manage Bot Extensions (ADMIN ONLY).", guild_ids = [944815705944109087])
+@bot.bridge_command(description = "Manage Bot Extensions (ADMIN ONLY).", guild_ids = [MAIN_GUILD_ID])
 @commands.has_permissions(administrator = True)
 async def extension(ctx, extension, option):
 	if extension:
@@ -40,7 +41,7 @@ async def extension(ctx, extension, option):
 			await ctx.send(f"La extensión `{extension}` ha sido desactivada.")
 			print(f"{extension} has been disabled.")
 		elif option == "reload":
-			bot.unload_extension(f"cogs.{extension}")
+			bot.reload_extension(f"cogs.{extension}")
 			await ctx.send(f"La extensión `{extension}` ha sido reiniciada.")
 			print(f"{extension} has been reloaded.")
 		else:
@@ -50,7 +51,7 @@ async def extension(ctx, extension, option):
 
 # Help Command
 
-@bot.bridge_command(description = "Help Command.", guild_ids = [918985655449681930])
+@bot.bridge_command(description = "Help Command.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
 async def help(ctx):
 	embed = discord.Embed(title = "Killer Hosting Discord Bot", color = discord.Color.blue())
 
