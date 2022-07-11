@@ -135,10 +135,6 @@ class LeagueCommands(commands.Cog):
 		embed.set_thumbnail(url = champ.image.url)
 
 		await ctx.respond(embed = embed)
-	
-	@bridge.bridge_command(description = "Get U.GG Tierlist.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
-	async def tierlist(self, ctx: bridge.BridgeContext, region : str = "world", elo : str = "all", role : str = "all_roles"):
-		res = get_champion_tierlist(region = region, elo = elo, role = role)
 
 	@bridge.bridge_command(description = "Choose a random champion.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
 	async def randomchamp(self, ctx : bridge.BridgeContext):

@@ -52,8 +52,7 @@ async def extension(ctx : bridge.BridgeContext, extension : str, option : str):
 @bot.bridge_command(description = "Shows this message.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
 async def help(ctx : bridge.BridgeContext):
 	embed = discord.Embed(
-		title = "Killer Hosting Discord Bot", 
-		color = discord.Color.yellow(),
+		color = discord.Color.nitro_pink(),
 		timestamp = datetime.now(tz = timezone("US/Eastern"))	
 	)
 
@@ -62,7 +61,9 @@ async def help(ctx : bridge.BridgeContext):
 		if not description or description is None or description == "":
 			description = "No existe descripción para este comando."
 		embed.add_field(name = f"!{command.name} {command.signature}", value = description, inline = False)
-			
+
+	embed.set_author(name = "Killer Bot | Help", icon_url = bot.user.avatar.url)	
+
 	await ctx.respond(embed = embed)
 
 bot.run(os.getenv("TOKEN"))
