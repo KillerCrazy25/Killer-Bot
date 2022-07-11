@@ -4,13 +4,10 @@ from discord.ext import commands, bridge
 import os
 from dotenv import load_dotenv
 
-import json
+from utils.config import MAIN_GUILD_ID, TESTING_GUILD_ID
 
-with open("./config.json") as file:
-	config = json.load(file)
-
-MAIN_GUILD_ID = config["guild_ids"]["main_guild_id"]
-TESTING_GUILD_ID = config["guild_ids"]["testing_guild_id"]
+from datetime import datetime
+from pytz import timezone
 
 load_dotenv()
 
@@ -22,15 +19,16 @@ bot.remove_command("help")
 @bot.event
 async def on_ready():
 	print(f"Bot is ready as {bot.user}")
+	await bot.change_presence(activity = discord.Game(name = "Use k!help to see all my commands!"))
 
 for filename in os.listdir("./cogs"):
 	if filename.endswith(".py"):
 		bot.load_extension(f"cogs.{filename[:-3]}")
 		print(f"{filename} has been enabled.")
 
-@bot.bridge_command(description = "Manage Bot Extensions (ADMIN ONLY).", guild_ids = [MAIN_GUILD_ID])
+@bot.bridge_command(description = "Manage Bot Extensions (ADMIN ONLY).", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
 @commands.has_permissions(administrator = True)
-async def extension(ctx, extension, option):
+async def extension(ctx : bridge.BridgeContext, extension : str, option : str):
 	if extension:
 		if option == "enable" or "on" or "true":
 			bot.load_extension(f"cogs.{extension}")
@@ -51,15 +49,19 @@ async def extension(ctx, extension, option):
 
 # Help Command
 
-@bot.bridge_command(description = "Help Command.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
-async def help(ctx):
-	embed = discord.Embed(title = "Killer Hosting Discord Bot", color = discord.Color.blue())
+@bot.bridge_command(description = "Shows this message.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
+async def help(ctx : bridge.BridgeContext):
+	embed = discord.Embed(
+		title = "Killer Hosting Discord Bot", 
+		color = discord.Color.yellow(),
+		timestamp = datetime.now(tz = timezone("US/Eastern"))	
+	)
 
 	for command in bot.walk_commands():
 		description = command.description
 		if not description or description is None or description == "":
 			description = "No existe descripción para este comando."
-		embed.add_field(name = f"!{command.name}", value = description)
+		embed.add_field(name = f"!{command.name} {command.signature}", value = description, inline = False)
 			
 	await ctx.respond(embed = embed)
 
