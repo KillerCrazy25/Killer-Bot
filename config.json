@@ -5,5 +5,10 @@
 	},
 	"user_ids" : {
 		"developer_id" : 355858104195350528
+	},
+	"lavalink" : {
+		"host" : "lavalinkinc.ml",
+		"port" : 443,
+		"password" : "incognito"
 	}
 }

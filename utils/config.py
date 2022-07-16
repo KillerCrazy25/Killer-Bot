@@ -15,6 +15,10 @@ TESTING_GUILD_ID = config["guild_ids"]["testing_guild_id"]
 
 DEVELOPER_ID = config["user_ids"]["developer_id"]
 
+LAVALINK_HOST = config["lavalink"]["host"]
+LAVALINK_PORT = config["lavalink"]["port"]
+LAVALINK_PASSWORD = config["lavalink"]["password"]
+
 CASSIOPEIA_CONFIG = { 
 	"global": {
 		"version_from_match": "patch"
@@ -29,7 +33,7 @@ CASSIOPEIA_CONFIG = {
 
 		}, 
 		"RiotAPI": {
-			"api_key": "RGAPI-765b518a-4d81-40e2-9daf-0c929f3c1abe"
+			"api_key": RIOT_TOKEN
 		},
 		"ChampionGG": {
 			"package": "cassiopeia_championgg",
