@@ -1,0 +1,90 @@
+import discord
+from discord.ext import commands, bridge
+
+from datetime import datetime
+
+from pytz import timezone
+
+from utils.config import MAIN_GUILD_ID, TESTING_GUILD_ID
+
+class ModerationCommands(commands.Cog):
+
+	def __init__(self, bot):
+		self.bot = bot
+
+	# Ban Command
+
+	@bridge.bridge_command(description = "Ban a user.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
+	async def ban(self, ctx : bridge.BridgeContext, user : discord.Member = None, *, reason : str = "No reason provided."):
+		if user == None:
+			return await ctx.respond(embed = discord.Embed(
+				description = "Please provide a user to ban.",
+				color = discord.Color.dark_gray()
+			)
+			.set_author(
+				name = "Killer Bot | Moderation", 
+				icon_url = self.bot.user.avatar.url
+			), 
+			delete_after = 15
+		)
+		if user == ctx.author:
+			return await ctx.respond(embed = discord.Embed(
+				description = "Sorry, you can't ban yourself.",
+				color = discord.Color.dark_gray()
+			)
+			.set_author(
+				name = "Killer Bot | Moderation", 
+				icon_url = self.bot.user.avatar.url
+			),
+			delete_after = 15
+		)
+		if user == user.guild.owner:
+			return await ctx.respond(embed = discord.Embed(
+				description = "Sorry, you can't ban the server owner.",
+				color = discord.Color.dark_gray()
+			)
+			.set_author(
+				name = "Killer Bot | Moderation", 
+				icon_url = self.bot.user.avatar.url
+			), 
+			delete_after = 15
+		)
+
+		embed = discord.Embed(
+			description = f"{user} has been banned from {ctx.guild.name}!",
+			color = discord.Color.red(),
+			timestamp = datetime.now(tz = timezone("US/Eastern"))
+		)
+
+		embed.add_field(name = "Moderator", value = ctx.author.mention, inline = True)
+		embed.add_field(name = "Duration", value = "Permanent", inline = True)
+		embed.add_field(name = "Reason", value = reason, inline = False)
+
+		embed.set_author(name = "Killer Bot | Moderation", icon_url = self.bot.user.avatar.url)
+
+		await ctx.respond(embed = embed)
+		await user.ban(reason = reason)
+
+		print("{} has been banned in {} by {} for {}.".format(user, ctx.author.guild.id, ctx.author, reason))
+
+	@bridge.bridge_command(description = "Unban a user.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
+	async def unban(self, ctx : bridge.BridgeContext, user : discord.User, reason : str = "No reason provided."):
+		await ctx.send(ctx.author)
+
+	@bridge.bridge_command(description = "Clear messages in a specified channel.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID], aliases = ["purge"])
+	async def clear(self, ctx : bridge.BridgeContext, limit : int = 5, channel : discord.TextChannel = None):
+		if channel == None:
+			channel = ctx.channel
+
+		embed = discord.Embed(
+			description = f"{ctx.author} has cleared {limit} messages in {channel}.",
+			color = discord.Color.og_blurple()
+		)
+
+		embed.set_author(name = "Killer Bot | Moderation", icon_url = self.bot.user.avatar.url)
+
+		await channel.purge(limit = limit)
+		await ctx.respond(embed = embed)
+
+def setup(bot):
+	bot.add_cog(ModerationCommands(bot))

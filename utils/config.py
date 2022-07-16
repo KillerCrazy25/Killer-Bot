@@ -1,11 +1,19 @@
-import os
-import json
+import os, json
+
+from dotenv import load_dotenv
+
+load_dotenv()
 
 with open("./config.json") as file:
 	config = json.load(file)
 
+TOKEN = os.getenv("TOKEN")
+RIOT_TOKEN = os.getenv("RIOT_TOKEN")
+
 MAIN_GUILD_ID = config["guild_ids"]["main_guild_id"]
 TESTING_GUILD_ID = config["guild_ids"]["testing_guild_id"]
+
+DEVELOPER_ID = config["user_ids"]["developer_id"]
 
 CASSIOPEIA_CONFIG = { 
 	"global": {

@@ -1,20 +1,14 @@
-import discord
+import discord, os
 from discord.ext import commands, bridge
 
-import os
-from dotenv import load_dotenv
-
-from utils.config import MAIN_GUILD_ID, TESTING_GUILD_ID
+from utils.config import MAIN_GUILD_ID, TESTING_GUILD_ID, TOKEN
 
 from datetime import datetime
 from pytz import timezone
 
-load_dotenv()
-
 intents = discord.Intents.all()
 
-bot = bridge.Bot(command_prefix = commands.when_mentioned_or("k!"), intents = intents)
-bot.remove_command("help")
+bot = bridge.Bot(command_prefix = commands.when_mentioned_or("k!"), intents = intents, help_command = None)
 
 @bot.event
 async def on_ready():
@@ -66,4 +60,4 @@ async def help(ctx : bridge.BridgeContext):
 
 	await ctx.respond(embed = embed)
 
-bot.run(os.getenv("TOKEN"))
+bot.run(TOKEN)

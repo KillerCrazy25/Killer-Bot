@@ -1,20 +1,16 @@
-import discord, cassiopeia as cass, os, random
+import discord, cassiopeia as cass, os, random, matplotlib.pyplot as plt
 
 from cassiopeia import *
 
 from discord.ext import commands, bridge
 
-from dotenv import load_dotenv
-
-from utils.utils import from_gg_to_normal, from_normal_to_gg, get_champion_tierlist, get_embed_color, get_mastery_emoji, get_rank_emoji, get_champion_analytics, from_cass_to_riot, from_riot_to_cass, human_format
-from utils.config import MAIN_GUILD_ID, TESTING_GUILD_ID, CASSIOPEIA_CONFIG
+from utils.utils import from_gg_to_normal, from_normal_to_gg, get_embed_color, get_mastery_emoji, get_rank_emoji, get_champion_analytics, from_cass_to_riot, from_riot_to_cass, human_format
+from utils.config import MAIN_GUILD_ID, TESTING_GUILD_ID, CASSIOPEIA_CONFIG, RIOT_TOKEN
 
 from datetime import datetime, timedelta
 from pytz import timezone
 
-load_dotenv()
-
-cass.set_riot_api_key(os.getenv("RIOT_TOKEN"))
+cass.set_riot_api_key(RIOT_TOKEN)
 cass.apply_settings(CASSIOPEIA_CONFIG)
 
 class LeagueCommands(commands.Cog):
@@ -94,6 +90,27 @@ class LeagueCommands(commands.Cog):
 			else:
 				break
 
+		champs_ = []
+		points_ = []
+		counter_ = 0
+
+		for i in best:
+			counter_ +=1
+			if counter_ <= 5:
+				champs_.append(i.champion.name)
+				points_.append(i.points)
+			else:
+				break
+		
+		plt.bar(champs_, points_, color = "pink")
+
+		plt.xlabel = "Champions"
+		plt.ylabel = "Mastery Points"
+
+		plt.savefig(f"{user}.png")
+
+		plt.close()
+
 		embed.add_field(name = "Best Champions", value = f"{champions}", inline = False)
 		embed.add_field(name = "Mastery Stats", value = f"{len(m7)}x <:mastery7:993688390723715172> {len(m6)}x <:mastery6:993688366317043772> {len(m5)}x <:mastery5:993688341063159860>\nTotal Mastery Points: {total_points}", inline = True)
 	
@@ -101,7 +118,15 @@ class LeagueCommands(commands.Cog):
 		embed.set_footer(text = f"Requested by {ctx.author}", icon_url = ctx.author.avatar.url)
 		embed.set_thumbnail(url = summoner.profile_icon.url)
 
-		await ctx.respond(embed = embed)
+		file_ = discord.File(f"{user}.png")
+		embed .set_image(url = f"attachment://{user}.png")
+
+		await ctx.respond(embed = embed, file = file_)
+
+		try:
+			os.remove(f"{user}.png")	
+		except:
+			print(f"{user}.png was not found on local files.")
 
 	@bridge.bridge_command(description = "Show champion analytics by U.GG", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
 	async def champ(self, ctx: bridge.BridgeContext, champion : str = "Annie", region : str = "world", elo : str = "all"):
@@ -128,7 +153,6 @@ class LeagueCommands(commands.Cog):
 		)
 	
 		embed.add_field(name = "Champion Analytics (U.GG)", value = f"Tier: {tier}\nWin Rate: {win_rate}\nRanking: {ranking}\nPick Rate: {pick_rate}\nBan Rate: {ban_rate}\nMatches: {matches}", inline = False)
-		embed.add_field(name = "Free To Play", value = champ.free_to_play, inline = True)
 		embed.set_author(name = "Killer Bot | League Of Legends Champion Analytics", icon_url = self.bot.user.avatar.url)
 		embed.set_footer(text = f"Requested by {ctx.author}", icon_url = ctx.author.avatar.url)
 
