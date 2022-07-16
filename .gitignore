@@ -1,3 +1,5 @@
 .env
 cassiopeia.json
 config.json
+warns.db
+.gitignore
