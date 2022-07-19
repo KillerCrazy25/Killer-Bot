@@ -20,8 +20,8 @@ class LeagueCommands(commands.Cog):
 
 	@bridge.bridge_command(description = "Profile command.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
 	async def profile(self, ctx: bridge.BridgeContext, user : str = "Josedeodo", region : str = "NA"):
-		
-		await ctx.send(f"> Please wait...\n> Loading `{user}` profile...", delete_after = 5)
+
+		await ctx.defer()
 
 		summoner = Summoner(name = user, region = region)
 

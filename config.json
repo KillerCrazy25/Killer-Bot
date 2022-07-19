@@ -1,10 +1,15 @@
 {
+	"prefix" : "k!",
 	"guild_ids" : {
 		"main_guild_id" : 944815705944109087,
 		"testing_guild_id" : 988216045024198746
 	},
 	"user_ids" : {
 		"developer_id" : 355858104195350528
+	},
+	"channel_ids" : {
+		"error_channel_id" : 998431318843068456,
+		"logs_channel_id" : 998431424724095106
 	},
 	"lavalink" : {
 		"host" : "lavalinkinc.ml",

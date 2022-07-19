@@ -5,7 +5,7 @@ from discord.ext import commands, bridge
 from datetime import datetime
 from pytz import timezone
 
-from utils.config import MAIN_GUILD_ID, TESTING_GUILD_ID, DEVELOPER_ID
+from utils.config import ERROR_CHANNEL_ID, MAIN_GUILD_ID, TESTING_GUILD_ID, DEVELOPER_ID
 
 class ErrorHandler(commands.Cog):
 
@@ -27,6 +27,7 @@ class ErrorHandler(commands.Cog):
 	@commands.Cog.listener()
 	async def on_ready(self):
 		self.developer = self.bot.get_user(DEVELOPER_ID)
+		self.error_channel = self.bot.get_channel(ERROR_CHANNEL_ID)
 		print("Developer ID: ", self.developer)
 
 	@commands.Cog.listener()
@@ -126,25 +127,18 @@ class ErrorHandler(commands.Cog):
 			with open(f"{error_id}.txt", 'a') as f:
 				f.write(f"Error in command {ctx.command} in guild {ctx.guild.name}\n\n{str(error)}\n\nDate: {datetime.now(tz = timezone('US/Eastern'))}\nError ID: {error_id}")
 
-			print(f"Successfully created error file for error id {error_id}")
-
 			with open(f"{error_id}.txt", 'rb') as f:
-				await self.developer.send(f"An error has ocurred in command `{ctx.command}` in guild `{ctx.guild.name}`.", file = discord.File(f, f"{error_id}.txt"))
-
-			print(f"Error file for error id {error_id} has been sent to {self.developer} with success!")
+				await self.error_channel.send(f"An error has ocurred in command `{ctx.command}` in guild `{ctx.guild.name}`.", file = discord.File(f, f"{error_id}.txt"))
 
 			embed.set_footer(text = f"Error ID: {error_id}")
 
 			os.remove(f"{error_id}.txt")
 
-			print(f"{error_id}.txt has been deleted from system files!")
-
 			return await ctx.send(embed = embed)
 
 	@bridge.bridge_command(guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
-	@commands.dm_only()
 	@commands.cooldown(1, 10, commands.BucketType.user)
-	async def testing(self, ctx : bridge.BridgeContext, color: discord.Color, member : discord.Member):
+	async def testing(self, ctx : bridge.BridgeContext, color: discord.Color):
 		await ctx.reply("si")
 
 def setup(bot):

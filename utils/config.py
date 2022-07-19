@@ -10,10 +10,15 @@ with open("./config.json") as file:
 TOKEN = os.getenv("TOKEN")
 RIOT_TOKEN = os.getenv("RIOT_TOKEN")
 
+PREFIX = config["prefix"]
+
 MAIN_GUILD_ID = config["guild_ids"]["main_guild_id"]
 TESTING_GUILD_ID = config["guild_ids"]["testing_guild_id"]
 
 DEVELOPER_ID = config["user_ids"]["developer_id"]
+
+ERROR_CHANNEL_ID = config["channel_ids"]["error_channel_id"]
+LOGS_CHANNEL_ID = config["channel_ids"]["logs_channel_id"]
 
 LAVALINK_HOST = config["lavalink"]["host"]
 LAVALINK_PORT = config["lavalink"]["port"]
