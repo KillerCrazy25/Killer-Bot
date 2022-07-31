@@ -1,4 +1,3 @@
-import random
 import discord, os
 from discord.ext import commands, bridge
 
@@ -7,10 +6,16 @@ from pytz import timezone
 
 from utils.config import ERROR_CHANNEL_ID, MAIN_GUILD_ID, TESTING_GUILD_ID, DEVELOPER_ID
 
+# Error Handler Cog
+
 class ErrorHandler(commands.Cog):
+
+	# Error Handler Constructor
 
 	def __init__(self, bot : bridge.Bot):
 		self.bot = bot
+
+	# Embed Constructor Function
 
 	async def embed_constructor(self):
 		embed = discord.Embed(
@@ -24,11 +29,14 @@ class ErrorHandler(commands.Cog):
 
 		return embed
 
+	# Ready Event
+
 	@commands.Cog.listener()
 	async def on_ready(self):
 		self.developer = self.bot.get_user(DEVELOPER_ID)
 		self.error_channel = self.bot.get_channel(ERROR_CHANNEL_ID)
-		print("Developer ID: ", self.developer)
+
+	# Command Error Event
 
 	@commands.Cog.listener()
 	async def on_command_error(self, ctx : bridge.BridgeContext, error):

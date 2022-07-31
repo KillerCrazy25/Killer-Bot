@@ -7,16 +7,22 @@ from discord.ext import commands, bridge
 from utils.utils import from_gg_to_normal, from_normal_to_gg, get_embed_color, get_mastery_emoji, get_rank_emoji, get_champion_analytics, from_cass_to_riot, from_riot_to_cass, human_format
 from utils.config import MAIN_GUILD_ID, TESTING_GUILD_ID, CASSIOPEIA_CONFIG, RIOT_TOKEN
 
-from datetime import datetime, timedelta
+from datetime import datetime
 from pytz import timezone
 
 cass.set_riot_api_key(RIOT_TOKEN)
 cass.apply_settings(CASSIOPEIA_CONFIG)
 
+# League Cog
+
 class LeagueCommands(commands.Cog):
+
+	# League Constructor
 	
 	def __init__(self, bot):
 		self.bot = bot
+
+	# Profile Command
 
 	@bridge.bridge_command(description = "Profile command.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
 	async def profile(self, ctx: bridge.BridgeContext, user : str = "Josedeodo", region : str = "NA"):
@@ -128,6 +134,8 @@ class LeagueCommands(commands.Cog):
 		except:
 			print(f"{user}.png was not found on local files.")
 
+	# Champ Command
+
 	@bridge.bridge_command(description = "Show champion analytics by U.GG", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
 	async def champ(self, ctx: bridge.BridgeContext, champion : str = "Annie", region : str = "world", elo : str = "all"):
 		champ = Champion(name = champion, region = "NA")
@@ -159,6 +167,8 @@ class LeagueCommands(commands.Cog):
 		embed.set_thumbnail(url = champ.image.url)
 
 		await ctx.respond(embed = embed)
+
+	# RandomChamp Command
 
 	@bridge.bridge_command(description = "Choose a random champion.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
 	async def randomchamp(self, ctx : bridge.BridgeContext):

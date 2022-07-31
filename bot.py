@@ -1,6 +1,4 @@
-import asyncio
-from asyncio import subprocess
-import discord, os
+import discord, os, asyncio
 from discord.ext import commands, bridge
 
 from utils.config import DEVELOPER_ID, MAIN_GUILD_ID, PREFIX, TESTING_GUILD_ID, TOKEN
@@ -12,20 +10,73 @@ intents = discord.Intents.all()
 
 bot = bridge.Bot(command_prefix = commands.when_mentioned_or(PREFIX), intents = intents, help_command = None)
 
+# Ready Event
+
 @bot.event
 async def on_ready():
 	print(f"Bot is ready as {bot.user}")
 	await bot.change_presence(activity = discord.Game(name = "Use k!help to see all my commands!"))
+	
+# Load Command
+
+@bot.bridge_command(description = "Load extension.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
+async def load(ctx : bridge.BridgeContext, extension : str):
+	if ctx.author.id == DEVELOPER_ID:
+		try:
+			bot.load_extension(f"cogs.{extension}")
+			await ctx.respond(f"Successfully loaded `{extension}`!")
+		except Exception as e:
+			await ctx.respond(f"Error loading `{extension}`!\n{e}")
+	else:
+		await ctx.respond(f"You are not the developer of this bot!")
+
+# Unload Command
+
+@bot.bridge_command(description = "Unload extension.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
+async def unload(ctx : bridge.BridgeContext, extension : str):
+	if ctx.author.id == DEVELOPER_ID:
+		try:
+			bot.unload_extension(f"cogs.{extension}")
+			await ctx.respond(f"Successfully unloaded `{extension}`!")
+		except Exception as e:
+			await ctx.respond(f"Error unloading `{extension}`!\n{e}")
+	else:
+		await ctx.respond(f"You are not the developer of this bot!")
+
+# Reload Command
+
+@bot.bridge_command(description = "Reload extension.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
+async def reload(ctx : bridge.BridgeContext, extension : str):
+	if ctx.author.id == DEVELOPER_ID:
+		try:
+			await ctx.defer()
+			bot.unload_extension(f"cogs.{extension}")
+			await asyncio.sleep(3)
+			bot.load_extension(f"cogs.{extension}")
+			await ctx.respond(f"Successfully reloaded `{extension}`!")
+		except Exception as e:
+			await ctx.respond(f"Error reloading `{extension}`!\n{e}")
+	else:
+		await ctx.respond(f"You are not the developer of this bot!")
+
+# Load All Cogs 
 
 for filename in os.listdir("./cogs"):
 	if filename.endswith(".py"):
 		bot.load_extension(f"cogs.{filename[:-3]}")
 		print(f"{filename} has been enabled.")
 
+# Help View
+
 class HelpDropdown(discord.ui.View):
+
+	# Help Dropdown Constructor
+
 	def __init__(self, user):
 		self.user = user
 		super().__init__(timeout = None)
+
+	# Select Menu
 
 	@discord.ui.select(
 		placeholder = "Choose your help page",
@@ -43,6 +94,9 @@ class HelpDropdown(discord.ui.View):
 			),
 		],
 	)
+
+	# Select Menu Callback
+
 	async def help_callback(self, select, interaction: discord.Interaction):
 		if interaction.user.id != self.user.id:
 			embed = discord.Embed(
@@ -64,13 +118,14 @@ class HelpDropdown(discord.ui.View):
 				name = "Killer Bot | Help",
 				icon_url = bot.user.avatar.url
 			)
-			for index, command in enumerate(bot.get_cog("ModerationCommands").get_commands()):
+			for command in bot.get_cog("ModerationCommands").walk_commands():
 				description = command.description
 				if not description or description is None or description == "":
 					description = "No description"
 				embed.add_field(
 					name = f"`{PREFIX}{command.name}`",
 					value = description,
+					inline = False
 				)
 			await interaction.response.edit_message(embed = embed, view = self)
 		elif select.values[0] == "League Of Legends":
@@ -89,6 +144,7 @@ class HelpDropdown(discord.ui.View):
 				embed.add_field(
 					name = f"`{PREFIX}{command.name}`",
 					value = description,
+					inline = False
 				)
 			await interaction.response.edit_message(embed = embed, view = self)
 		elif select.values[0] == "Music":
@@ -107,8 +163,11 @@ class HelpDropdown(discord.ui.View):
 				embed.add_field(
 					name = f"`{PREFIX}{command.name}`",
 					value = description,
+					inline = False
 				)
 			await interaction.response.edit_message(embed = embed, view = self)
+
+	# Close Button
 
 	@discord.ui.button(
 		label = "Close",
@@ -143,8 +202,10 @@ async def help(ctx):
 	)
 	await ctx.respond(embed = embed, view = view)
 
+# Moderation Argument
+
 @help.command()
-async def moderation(ctx):
+async def moderation(ctx : bridge.BridgeContext):
 	view = HelpDropdown(ctx.author)
 	embed = discord.Embed(
 		title=f"Moderation Commands:",
@@ -161,11 +222,14 @@ async def moderation(ctx):
 		embed.add_field(
 			name = f"`{PREFIX}{command.name}`",
 			value = description,
+			inline = False
 		)
 	await ctx.respond(embed = embed, view = view)
 
+# League of Legends Argument
+
 @help.command()
-async def lol(ctx):
+async def lol(ctx : bridge.BridgeContext):
 	view = HelpDropdown(ctx.author)
 	embed = discord.Embed(
 		title=f"League Of Legends Commands:",
@@ -182,11 +246,14 @@ async def lol(ctx):
 		embed.add_field(
 			name = f"`{PREFIX}{command.name}`",
 			value = description,
+			inline = False
 		)
 	await ctx.respond(embed = embed, view = view)
 
+# Music Argument
+
 @help.command()
-async def music(ctx):
+async def music(ctx : bridge.BridgeContext):
 	view = HelpDropdown(ctx.author, ctx.message)
 	embed = discord.Embed(
 		title = f"Music Commands:",
@@ -203,7 +270,10 @@ async def music(ctx):
 		embed.add_field(
 			name = f"`{PREFIX}{command.name}`",
 			value = description,
+			inline = False
 		)
 	await ctx.respond(embed = embed, view = view)
+
+# Run Bot
 
 bot.run(TOKEN)

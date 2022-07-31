@@ -5,7 +5,11 @@ from discord.ext import commands, bridge
 
 from utils.config import MAIN_GUILD_ID, TESTING_GUILD_ID, LAVALINK_HOST, LAVALINK_PORT, LAVALINK_PASSWORD
 
+# Panel View
+
 class Panel(discord.ui.View):
+
+	# Panel Constructor
 
 	def __init__(self, vc, ctx, bot):
 		super().__init__(timeout = None)
@@ -13,11 +17,15 @@ class Panel(discord.ui.View):
 		self.ctx = ctx
 		self.bot = bot
 
+	# Timeout Event
+
 	async def on_timeout(self):
 		for child in self.children:
 			child.disabled = True
 
 		await self.message.edit(view = self)
+
+	# Pause / Resume Button
 
 	@discord.ui.button(label = "Pause / Resume", style = discord.ButtonStyle.blurple)
 	async def pause_resume_callback(self, button : discord.ui.Button, interaction : discord.Interaction):
@@ -33,6 +41,8 @@ class Panel(discord.ui.View):
 		else:
 			await self.vc.pause()
 			await interaction.message.edit(content = "⏸ Paused", view = self)
+
+	# Queue Button
 
 	@discord.ui.button(label = "Queue", style = discord.ButtonStyle.blurple)
 	async def queue(self, button: discord.ui.Button, interaction: discord.Interaction):
@@ -60,6 +70,8 @@ class Panel(discord.ui.View):
 
 		await interaction.message.edit(embed = embed, view = self)
 
+	# Skip Button
+
 	@discord.ui.button(label = "Skip", style = discord.ButtonStyle.blurple)
 	async def skip(self, button: discord.ui.Button, interaction: discord.Interaction):
 		if not interaction.user == self.ctx.author:
@@ -80,6 +92,8 @@ class Panel(discord.ui.View):
 		except Exception:
 			return await interaction.response.send_message("Queue is empty. Add tracks to queue using `k!play`.", ephemeral = True)
 
+	# Disconnect Button
+
 	@discord.ui.button(label = "Disconnect", style = discord.ButtonStyle.red)
 	async def disconnect_callback(self, button : discord.ui.Button, interaction : discord.Interaction):
 		if not interaction.user == self.ctx.author:
@@ -92,23 +106,35 @@ class Panel(discord.ui.View):
 
 		await interaction.message.edit(content = "❌ Disconnected.", view = self)
 
+# Music Cog
+
 class Music(commands.Cog):
+
+	# Music Constructor
 
 	def __init__(self, bot : bridge.Bot):
 		self.bot = bot
 		bot.loop.create_task(self.node_connect())
 
+	# Node Ready Event
+
 	@commands.Cog.listener()
 	async def on_wavelink_node_ready(self, node : wavelink.Node):
 		print(f"Node {node.identifier} is ready to use!")
+
+	# Connect Node Function
 
 	async def node_connect(self):
 		await self.bot.wait_until_ready()
 		await wavelink.NodePool.create_node(bot = self.bot, host = LAVALINK_HOST, port = LAVALINK_PORT, password = LAVALINK_PASSWORD, https = True)
 
+	# Node Ready Event
+
 	@commands.Cog.listener()
 	async def on_wavelink_node_ready(self, node: wavelink.Node):
 		print(f'Node <{node.identifier}> is ready!')
+
+	# On Track End Event
 
 	@commands.Cog.listener()
 	async def on_wavelink_track_end(self, player: wavelink.Player, track: wavelink.YouTubeTrack, reason):
@@ -125,7 +151,9 @@ class Music(commands.Cog):
 		next_song = vc.queue.get()
 
 		await vc.play(next_song)
-		await ctx.respond(f"Now playing: {next_song.title}")	
+		await ctx.respond(f"Now playing: {next_song.title}")
+
+	# Play Command	
 
 	@bridge.bridge_command(description = "Play a track.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
 	async def play(self, ctx : bridge.BridgeContext, *, search : wavelink.YouTubeTrack):
@@ -167,6 +195,8 @@ class Music(commands.Cog):
 		except Exception:
 			setattr(vc, "loop", False)
 
+	# Pause Command
+
 	@bridge.bridge_command(description = "Pause a track.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
 	async def pause(self, ctx : bridge.BridgeContext):
 		if not ctx.voice_client:
@@ -192,7 +222,10 @@ class Music(commands.Cog):
 		).set_footer(
 			text = f"Requested by {ctx.author}",
 			icon_url = ctx.author.avatar.url
-		))
+		)
+	)
+
+	# Resume Command
 		
 	@bridge.bridge_command(description = "Resume a track.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
 	async def resume(self, ctx : bridge.BridgeContext):
@@ -222,6 +255,8 @@ class Music(commands.Cog):
 		)
 	)
 
+	# Skip Command
+
 	@bridge.bridge_command(description = "Skip to the next track.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
 	async def skip(self, ctx: bridge.BridgeContext):
 		if not ctx.voice_client:
@@ -244,9 +279,8 @@ class Music(commands.Cog):
 
 		except Exception:
 			return await ctx.respond("Queue is empty. Add tracks to queue using `k!play`.")
-		
-		await vc.stop()
-		await ctx.respond("Stopped.")
+
+	# Stop Command
 
 	@bridge.bridge_command(description = "Stop a track.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
 	async def stop(self, ctx : bridge.BridgeContext):
@@ -275,6 +309,8 @@ class Music(commands.Cog):
 			icon_url = ctx.author.avatar.url
 		))
 
+	# Disconnect Command
+
 	@bridge.bridge_command(description = "Disconnect from voice.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
 	async def disconnect(self, ctx : bridge.BridgeContext):
 		if not ctx.voice_client:
@@ -298,6 +334,8 @@ class Music(commands.Cog):
 			text = f"Requested by {ctx.author}",
 			icon_url = ctx.author.avatar.url
 		))
+
+	# Loop Command
 
 	@bridge.bridge_command(description = "Loop a track.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
 	async def loop(self, ctx: bridge.BridgeContext):
@@ -323,6 +361,8 @@ class Music(commands.Cog):
 
 		else:
 			return await ctx.respond("🔁 Loop is now disabled.")
+
+	# Queue Command
 
 	@bridge.bridge_command(description = "Show the track queue.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
 	async def queue(self, ctx: bridge.BridgeContext):
@@ -350,6 +390,8 @@ class Music(commands.Cog):
 			
 		await ctx.respond(embed = embed)
 
+	# Clearqueue Command
+
 	@bridge.bridge_command(description = "Clears track queue.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
 	async def clearqueue(self, ctx : bridge.BridgeContext):
 		if not ctx.voice_client:
@@ -365,6 +407,8 @@ class Music(commands.Cog):
 
 		await ctx.respond("Queue has been cleared.")
 		return vc.queue.clear()
+
+	# Volume Command
 
 	@bridge.bridge_command(description = "Set bot's volume.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
 	async def volume(self, ctx: bridge.BridgeContext, volume: int):

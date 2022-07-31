@@ -3,51 +3,53 @@ import discord, os, subprocess, asyncio, sys, json
 from discord.ext import commands, bridge
 from utils.config import DEVELOPER_ID, MAIN_GUILD_ID, PREFIX, TESTING_GUILD_ID
 
-#self.buttons = []
-#self.buttons.append(discord.ui.Button(name='Join', action=self.join_server))
-#self.buttons.append(discord.ui.Button(name='Leave', action=self.leave_server))
-#self.buttons.append(discord.ui.Button(name='Back', action=self.close))
+# Server Buttons View
 
 class ServerButtons(discord.ui.View):
 
-	def __init__(self, user, server):
+	# Server Buttons Constructor
+
+	def __init__(self, server):
 		super().__init__(timeout = None)
-		self.user = user
 		self.server = server
 
+	# Start Server Function
+
 	async def start_server(self, server, channel):
-		os.system(f'screen -dmS "{server}" python3 test.py')
-
-		await asyncio.sleep(1)
-
 		await channel.send(f'Starting server `{server}`. Please wait')
+
+	# Start Server Button
 
 	@discord.ui.button(label = "Start Server", style = discord.ButtonStyle.success, custom_id = "start_server")
 	async def start_callback(self, button : discord.ui.Button, interaction : discord.Interaction):
 		await interaction.response.send_message(f"Sended start instruction to {self.server}")
 		await self.start_server(server = self.server, channel = interaction.channel)
 
-	@discord.ui.button(label = "Stop Server", style = discord.ButtonStyle.gray, custom_id = "stop_server")
+	# Stop Server Button
+
+	@discord.ui.button(label = "Stop Server", style = discord.ButtonStyle.red, custom_id = "stop_server")
 	async def stop_callback(self, button : discord.ui.Button, interaction : discord.Interaction):
 		await interaction.response.send_message("Stopping server...")
 		await self.stop_server()
+
+	# Restart Server Button
 
 	@discord.ui.button(label = "Restart Server", style = discord.ButtonStyle.gray, custom_id = "restart_server")
 	async def restart_callback(self, button : discord.ui.Button, interaction : discord.Interaction):
 		await interaction.response.send_message("Restarting server...")
 		await self.restart_server()
 
-	@discord.ui.button(label = "Kill Server", style = discord.ButtonStyle.red, custom_id = "kill_server")
-	async def kill_callback(self, button : discord.ui.Button, interaction : discord.Interaction):
-		await interaction.response.send_message("Starting server...")
-		await self.start_server()
-
+# Server Control Cog
 
 class ServerControl(commands.Cog):
+
+	# Server Control Constructor
 
 	def __init__(self, bot : bridge.Bot):
 		self.bot = bot
 		self.blocked_characters = ["`", "~", "!", "@", "#", "$", "%", "^", "&", "*", "(", ")", "+", "=", "|", "\\", "{", "}", "[", "]", ":", ";", "\"", "'", ",", "<", ".", ">", "/", "?", " "]
+
+	# Setup Command
 
 	@bridge.bridge_command(description = "Setup", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
 	async def setup(self, ctx : bridge.BridgeContext):
@@ -113,18 +115,18 @@ class ServerControl(commands.Cog):
 
 				channel_name =  f"{users[ctx.author.name]['username']}-server"
 
-				await ctx.send(f"Creating your server's panel channel {channel_name}...")
+				await ctx.send("Creating your server's panel channel...")
 				await asyncio.sleep(5)
 
-				channel = await ctx.guild.create_text_channel(channel_name)
-				await ctx.send(f"Panel {channel_name} has been created!")
+				channel : discord.TextChannel = await ctx.guild.create_text_channel(channel_name)
+				await ctx.send(f"Panel {channel.mention} has been created!")
 
 				users[ctx.author.name]["channel"] = int(channel.id)
 
 				with open("users.json", "w") as f:
 					json.dump(users, f, indent = 4)
 
-				view = ServerButtons(ctx.author, server_name)
+				view = ServerButtons(server_name)
 
 				await channel.send(embed = discord.Embed(
 					title = f"{server_name} Control Panel", 

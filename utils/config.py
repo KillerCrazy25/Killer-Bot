@@ -10,6 +10,8 @@ with open("./config.json") as file:
 TOKEN = os.getenv("TOKEN")
 RIOT_TOKEN = os.getenv("RIOT_TOKEN")
 
+VERSION = config["version"]
+
 PREFIX = config["prefix"]
 
 MAIN_GUILD_ID = config["guild_ids"]["main_guild_id"]
