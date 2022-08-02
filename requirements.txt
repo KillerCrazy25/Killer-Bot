@@ -1,0 +1,6 @@
+nextcord
+pytz
+python-dotenv
+cassiopeia
+matplotlib
+wavelink
