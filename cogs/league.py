@@ -1,8 +1,8 @@
-import discord, cassiopeia as cass, os, random, matplotlib.pyplot as plt
+import nextcord, cassiopeia as cass, os, random, matplotlib.pyplot as plt
 
 from cassiopeia import *
 
-from discord.ext import commands, bridge
+from nextcord.ext import commands
 
 from utils.utils import from_gg_to_normal, from_normal_to_gg, get_embed_color, get_mastery_emoji, get_rank_emoji, get_champion_analytics, from_cass_to_riot, from_riot_to_cass, human_format, get_tierlist
 from utils.config import MAIN_GUILD_ID, TESTING_GUILD_ID, CASSIOPEIA_CONFIG, RIOT_TOKEN
@@ -24,16 +24,16 @@ class LeagueCommands(commands.Cog):
 
 	# Profile Command
 
-	@bridge.bridge_command(description = "Profile command.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
-	async def profile(self, ctx: bridge.BridgeContext, user : str = "Josedeodo", region : str = "NA"):
+	@commands.command(description = "Profile command.")
+	async def profile(self, ctx: commands.Context, user : str = "Josedeodo", region : str = "NA"):
 
 		await ctx.defer()
 
 		summoner = Summoner(name = user, region = region)
 
-		embed = discord.Embed(
+		embed = nextcord.Embed(
 			description = f"{user}'s Profile | Level {summoner.level}",
-			color = discord.Color.nitro_pink(),
+			color = nextcord.Color.nitro_pink(),
 			timestamp = datetime.now(tz = timezone("US/Eastern"))	
 		)
 
@@ -124,10 +124,10 @@ class LeagueCommands(commands.Cog):
 		embed.set_footer(text = f"Requested by {ctx.author}", icon_url = ctx.author.avatar.url)
 		embed.set_thumbnail(url = summoner.profile_icon.url)
 
-		file_ = discord.File(f"{user}.png")
+		file_ = nextcord.File(f"{user}.png")
 		embed .set_image(url = f"attachment://{user}.png")
 
-		await ctx.respond(embed = embed, file = file_)
+		await ctx.send(embed = embed, file = file_)
 
 		try:
 			os.remove(f"{user}.png")	
@@ -136,8 +136,8 @@ class LeagueCommands(commands.Cog):
 
 	# Champ Command
 
-	@bridge.bridge_command(description = "Show champion analytics by U.GG", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
-	async def champ(self, ctx: bridge.BridgeContext, champion : str = "Annie", region : str = "world", elo : str = "all"):
+	@commands.command(description = "Show champion analytics by U.GG")
+	async def champ(self, ctx: commands.Context, champion : str = "Annie", region : str = "world", elo : str = "all"):
 		champ = Champion(name = champion, region = "NA")
 
 		search_elo = from_normal_to_gg(elo)
@@ -153,7 +153,7 @@ class LeagueCommands(commands.Cog):
 		embed_color = get_embed_color(tier)
 		embed_elo = from_gg_to_normal(search_elo)
 
-		embed = discord.Embed(
+		embed = nextcord.Embed(
 			title = f"{champion} Information",
 			description = f"Displaying statistics for {champion}\nElo: {embed_elo.capitalize()}\nRegion: {region.capitalize()}",
 			color = int(embed_color, 16),
@@ -166,19 +166,19 @@ class LeagueCommands(commands.Cog):
 
 		embed.set_thumbnail(url = champ.image.url)
 
-		await ctx.respond(embed = embed)
+		await ctx.send(embed = embed)
 
 	# RandomChamp Command
 
-	@bridge.bridge_command(description = "Choose a random champion.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
-	async def randomchamp(self, ctx : bridge.BridgeContext):
+	@commands.command(description = "Choose a random champion.")
+	async def randomchamp(self, ctx : commands.Context):
 		champs = cass.get_champions(region = "NA")
 		
 		champ = random.choice(champs)
 
-		embed = discord.Embed(
+		embed = nextcord.Embed(
 			title = f"Champion: {champ.name}",
-			color = discord.Color.random(),
+			color = nextcord.Color.random(),
 			timestamp = datetime.now(tz = timezone("US/Eastern"))	
 		)
 
@@ -186,7 +186,7 @@ class LeagueCommands(commands.Cog):
 		embed.set_author(name = "Killer Bot | League Of Legends Champion Randomizer", icon_url = self.bot.user.avatar.url)
 		embed.set_footer(text = f"Requested by {ctx.author}", icon_url = ctx.author.avatar.url)
 
-		await ctx.respond(embed = embed)
+		await ctx.send(embed = embed)
 
 def setup(bot):
 	bot.add_cog(LeagueCommands(bot))

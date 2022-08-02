@@ -1,13 +1,13 @@
 from datetime import datetime, timedelta
-import discord, wavelink
+import nextcord, wavelink
 from pytz import timezone
-from discord.ext import commands, bridge
+from nextcord.ext import commands
 
 from utils.config import MAIN_GUILD_ID, TESTING_GUILD_ID, LAVALINK_HOST, LAVALINK_PORT, LAVALINK_PASSWORD
 
 # Panel View
 
-class Panel(discord.ui.View):
+class Panel(nextcord.ui.View):
 
 	# Panel Constructor
 
@@ -27,8 +27,8 @@ class Panel(discord.ui.View):
 
 	# Pause / Resume Button
 
-	@discord.ui.button(label = "Pause / Resume", style = discord.ButtonStyle.blurple)
-	async def pause_resume_callback(self, button : discord.ui.Button, interaction : discord.Interaction):
+	@nextcord.ui.button(label = "Pause / Resume", style = nextcord.ButtonStyle.blurple)
+	async def pause_resume_callback(self, button : nextcord.ui.Button, interaction : nextcord.Interaction):
 		if not interaction.user == self.ctx.author:
 			return await interaction.response.send_message("You can't do that. Run the command yourself to use these buttons.", ephemeral = True)
 
@@ -44,8 +44,8 @@ class Panel(discord.ui.View):
 
 	# Queue Button
 
-	@discord.ui.button(label = "Queue", style = discord.ButtonStyle.blurple)
-	async def queue(self, button: discord.ui.Button, interaction: discord.Interaction):
+	@nextcord.ui.button(label = "Queue", style = nextcord.ButtonStyle.blurple)
+	async def queue(self, button: nextcord.ui.Button, interaction: nextcord.Interaction):
 		if not interaction.user == self.ctx.author:
 			return await interaction.response.send_message("You can't do that. Run the command yourself to use these buttons.", ephemeral = True)
 
@@ -57,7 +57,7 @@ class Panel(discord.ui.View):
 		if self.vc.queue.is_empty:
 			return await interaction.response.send_message("Queue is empty. Add tracks to queue using `k!play`.", ephemeral = True)
 	
-		embed = discord.Embed(title = "Queue")
+		embed = nextcord.Embed(title = "Queue")
 
 		embed.set_author(name = "Killer Bot | Music", icon_url = self.bot.user.avatar.url)
 
@@ -72,8 +72,8 @@ class Panel(discord.ui.View):
 
 	# Skip Button
 
-	@discord.ui.button(label = "Skip", style = discord.ButtonStyle.blurple)
-	async def skip(self, button: discord.ui.Button, interaction: discord.Interaction):
+	@nextcord.ui.button(label = "Skip", style = nextcord.ButtonStyle.blurple)
+	async def skip(self, button: nextcord.ui.Button, interaction: nextcord.Interaction):
 		if not interaction.user == self.ctx.author:
 			return await interaction.response.send_message("You can't do that. Run the command yourself to use these buttons.", ephemeral = True)
 
@@ -94,8 +94,8 @@ class Panel(discord.ui.View):
 
 	# Disconnect Button
 
-	@discord.ui.button(label = "Disconnect", style = discord.ButtonStyle.red)
-	async def disconnect_callback(self, button : discord.ui.Button, interaction : discord.Interaction):
+	@nextcord.ui.button(label = "Disconnect", style = nextcord.ButtonStyle.red)
+	async def disconnect_callback(self, button : nextcord.ui.Button, interaction : nextcord.Interaction):
 		if not interaction.user == self.ctx.author:
 			return await interaction.response.send_message("You can't do that. Run the command yourself to use these buttons.", ephemeral = True)
 
@@ -112,7 +112,7 @@ class Music(commands.Cog):
 
 	# Music Constructor
 
-	def __init__(self, bot : bridge.Bot):
+	def __init__(self, bot : commands.Bot):
 		self.bot = bot
 		bot.loop.create_task(self.node_connect())
 
@@ -142,7 +142,7 @@ class Music(commands.Cog):
 		vc: player = ctx.voice_client
 		
 		if vc.loop:
-			await ctx.respond(f"Now playing: {track.title}")
+			await ctx.send(f"Now playing: {track.title}")
 			return await vc.play(track)
 
 		if vc.queue.is_empty:
@@ -155,13 +155,13 @@ class Music(commands.Cog):
 
 	# Play Command	
 
-	@bridge.bridge_command(description = "Play a track.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
-	async def play(self, ctx : bridge.BridgeContext, *, search : wavelink.YouTubeTrack):
+	@commands.command(description = "Play a track.")
+	async def play(self, ctx : commands.Context, *, search : wavelink.YouTubeTrack):
 		if not ctx.voice_client:
 			vc : wavelink.Player = await ctx.author.voice.channel.connect(cls = wavelink.Player)
 
 		elif not getattr(ctx.author.voice, "channel", None):
-			return await ctx.respond("You are not in a voice channel.")
+			return await ctx.send("You are not in a voice channel.")
 			
 		else:
 			vc: wavelink.Player = ctx.voice_client
@@ -169,10 +169,10 @@ class Music(commands.Cog):
 		if vc.queue.is_empty and not vc.is_playing():
 			await vc.play(search)	
 
-			embed = discord.Embed(
+			embed = nextcord.Embed(
 				title = f"▶ Playing `{search.title}`",
 				description = f"Author: {search.author}",
-				color = discord.Color.green(),
+				color = nextcord.Color.green(),
 				timestamp = datetime.now(tz = timezone("US/Eastern"))
 			)
 
@@ -181,11 +181,11 @@ class Music(commands.Cog):
 			embed.set_thumbnail(url = search.thumbnail)
 			embed.set_image(url = search.thumbnail)
 
-			await ctx.respond(embed = embed, view = Panel(vc, ctx, self.bot))
+			await ctx.send(embed = embed, view = Panel(vc, ctx, self.bot))
 
 		else:
 			await vc.queue.put_wait(search)
-			await ctx.respond(f'Added `{search.title}` to the queue...')
+			await ctx.send(f'Added `{search.title}` to the queue...')
 
 		vc.ctx = ctx
 		try:
@@ -195,24 +195,24 @@ class Music(commands.Cog):
 
 	# Pause Command
 
-	@bridge.bridge_command(description = "Pause a track.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
-	async def pause(self, ctx : bridge.BridgeContext):
+	@commands.command(description = "Pause a track.")
+	async def pause(self, ctx : commands.Context):
 		if not ctx.voice_client:
-			return await ctx.respond("I'm not in a voice channel.")
+			return await ctx.send("I'm not in a voice channel.")
 
 		elif not getattr(ctx.author.voice, "channel", None):
-			return await ctx.respond("You are not in a voice channel.")
+			return await ctx.send("You are not in a voice channel.")
 			
 		else:
 			vc: wavelink.Player = ctx.voice_client
 
 		if not vc.is_playing():
-			return await ctx.respond("Play a track before try to pause something.")
+			return await ctx.send("Play a track before try to pause something.")
 
 		await vc.pause()
-		await ctx.respond(embed = discord.Embed(
+		await ctx.send(embed = nextcord.Embed(
 			description = f"⏸ Track is now paused.",
-			color = discord.Color.red(),
+			color = nextcord.Color.red(),
 			timestamp = datetime.now(tz = timezone("US/Eastern"))
 		).set_author(
 			name = "Killer Bot | Music", 
@@ -225,24 +225,24 @@ class Music(commands.Cog):
 
 	# Resume Command
 		
-	@bridge.bridge_command(description = "Resume a track.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
-	async def resume(self, ctx : bridge.BridgeContext):
+	@commands.command(description = "Resume a track.")
+	async def resume(self, ctx : commands.Context):
 		if not ctx.voice_client:
-			return await ctx.respond("I'm not in a voice channel.")
+			return await ctx.send("I'm not in a voice channel.")
 
 		elif not getattr(ctx.author.voice, "channel", None):
-			return await ctx.respond("You are not in a voice channel.")
+			return await ctx.send("You are not in a voice channel.")
 			
 		else:
 			vc: wavelink.Player = ctx.voice_client
 
 		if not vc.is_playing():
-			return await ctx.respond("Track is not paused.")
+			return await ctx.send("Track is not paused.")
 		
 		await vc.resume()
-		await ctx.respond(embed = discord.Embed(
+		await ctx.send(embed = nextcord.Embed(
 			description = f"▶ Track is now resumed.",
-			color = discord.Color.red(),
+			color = nextcord.Color.red(),
 			timestamp = datetime.now(tz = timezone("US/Eastern"))
 		).set_author(
 			name = "Killer Bot | Music", 
@@ -255,19 +255,19 @@ class Music(commands.Cog):
 
 	# Skip Command
 
-	@bridge.bridge_command(description = "Skip to the next track.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
-	async def skip(self, ctx: bridge.BridgeContext):
+	@commands.command(description = "Skip to the next track.")
+	async def skip(self, ctx: commands.Context):
 		if not ctx.voice_client:
-			return await ctx.respond("I'm not in a voice channel.")
+			return await ctx.send("I'm not in a voice channel.")
 
 		elif not getattr(ctx.author.voice, "channel", None):
-			return await ctx.respond("You are not in a voice channel.")
+			return await ctx.send("You are not in a voice channel.")
 			
 		else:
 			vc: wavelink.Player = ctx.voice_client
 			
 		if not vc.is_playing():
-			return await ctx.respond("Play a track before try to skip something.")
+			return await ctx.send("Play a track before try to skip something.")
 		
 		try:
 			next_song = vc.queue.get()
@@ -276,28 +276,28 @@ class Music(commands.Cog):
 			await ctx.send(f"Now Playing `{next_song}`")		
 
 		except Exception:
-			return await ctx.respond("Queue is empty. Add tracks to queue using `k!play`.")
+			return await ctx.send("Queue is empty. Add tracks to queue using `k!play`.")
 
 	# Stop Command
 
-	@bridge.bridge_command(description = "Stop a track.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
-	async def stop(self, ctx : bridge.BridgeContext):
+	@commands.command(description = "Stop a track.")
+	async def stop(self, ctx : commands.Context):
 		if not ctx.voice_client:
-			return await ctx.respond("I'm not in a voice channel.")
+			return await ctx.send("I'm not in a voice channel.")
 
 		elif not getattr(ctx.author.voice, "channel", None):
-			return await ctx.respond("You are not in a voice channel.")
+			return await ctx.send("You are not in a voice channel.")
 			
 		else:
 			vc: wavelink.Player = ctx.voice_client
 
 		if not vc.is_playing():
-			return await ctx.respond("Play a track before try to stop something.")
+			return await ctx.send("Play a track before try to stop something.")
 
 		await vc.stop()
-		await ctx.respond(embed = discord.Embed(
+		await ctx.send(embed = nextcord.Embed(
 			description = f"⏹ Track is now stopped.",
-			color = discord.Color.red(),
+			color = nextcord.Color.red(),
 			timestamp = datetime.now(tz = timezone("US/Eastern"))
 		).set_author(
 			name = "Killer Bot | Music", 
@@ -309,21 +309,21 @@ class Music(commands.Cog):
 
 	# Disconnect Command
 
-	@bridge.bridge_command(description = "Disconnect from voice.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
-	async def disconnect(self, ctx : bridge.BridgeContext):
+	@commands.command(description = "Disconnect from voice.")
+	async def disconnect(self, ctx : commands.Context):
 		if not ctx.voice_client:
-			return await ctx.respond("I'm not in a voice channel.")
+			return await ctx.send("I'm not in a voice channel.")
 
 		elif not getattr(ctx.author.voice, "channel", None):
-			return await ctx.respond("You are not in a voice channel.")
+			return await ctx.send("You are not in a voice channel.")
 			
 		else:
 			vc: wavelink.Player = ctx.voice_client
 
 		await vc.disconnect()
-		await ctx.respond(embed = discord.Embed(
+		await ctx.send(embed = nextcord.Embed(
 			description = f"❌ Disconnected from {ctx.author.voice.channel}.",
-			color = discord.Color.red(),
+			color = nextcord.Color.red(),
 			timestamp = datetime.now(tz = timezone("US/Eastern"))
 		).set_author(
 			name = "Killer Bot | Music", 
@@ -335,18 +335,18 @@ class Music(commands.Cog):
 
 	# Loop Command
 
-	@bridge.bridge_command(description = "Loop a track.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
-	async def loop(self, ctx: bridge.BridgeContext):
+	@commands.command(description = "Loop a track.")
+	async def loop(self, ctx: commands.Context):
 		if not ctx.voice_client:
-			return await ctx.respond("I'm not in a voice channel.")
+			return await ctx.send("I'm not in a voice channel.")
 
 		elif not getattr(ctx.author.voice, "channel", None):
-			return await ctx.respond("You are not in a voice channel.")
+			return await ctx.send("You are not in a voice channel.")
 
 		vc: wavelink.Player = ctx.voice_client
 
 		if not vc.is_playing():
-			return await ctx.respond("Play a track before try to loop something.")
+			return await ctx.send("Play a track before try to loop something.")
 		
 		try: 
 			vc.loop ^= True
@@ -355,27 +355,27 @@ class Music(commands.Cog):
 			setattr(vc, "loop", False)
 
 		if vc.loop:
-			return await ctx.respond("🔁 Loop is now enabled.")
+			return await ctx.send("🔁 Loop is now enabled.")
 
 		else:
-			return await ctx.respond("🔁 Loop is now disabled.")
+			return await ctx.send("🔁 Loop is now disabled.")
 
 	# Queue Command
 
-	@bridge.bridge_command(description = "Show the track queue.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
-	async def queue(self, ctx: bridge.BridgeContext):
+	@commands.command(description = "Show the track queue.")
+	async def queue(self, ctx: commands.Context):
 		if not ctx.voice_client:
-			return await ctx.respond("I'm not in a voice channel.")
+			return await ctx.send("I'm not in a voice channel.")
 
 		elif not getattr(ctx.author.voice, "channel", None):
-			return await ctx.respond("You are not in a voice channel.")
+			return await ctx.send("You are not in a voice channel.")
 		
 		vc: wavelink.Player = ctx.voice_client
 
 		if vc.queue.is_empty:
-			return await ctx.respond("Queue is empty. Add tracks to queue using `k!play`.")
+			return await ctx.send("Queue is empty. Add tracks to queue using `k!play`.")
 		
-		embed = discord.Embed(title = "Queue")
+		embed = nextcord.Embed(title = "Queue")
 
 		embed.set_author(name = "Killer Bot | Music", icon_url = self.bot.user.avatar.url)
 
@@ -386,69 +386,69 @@ class Music(commands.Cog):
 			songCount += 1
 			embed.add_field(name = f"{str(songCount)}) {song}", value = u"\u2063", inline = False)
 			
-		await ctx.respond(embed = embed)
+		await ctx.send(embed = embed)
 
 	# Clearqueue Command
 
-	@bridge.bridge_command(description = "Clears track queue.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
-	async def clearqueue(self, ctx : bridge.BridgeContext):
+	@commands.command(description = "Clears track queue.")
+	async def clearqueue(self, ctx : commands.Context):
 		if not ctx.voice_client:
-			return await ctx.respond("I'm not in a voice channel.")
+			return await ctx.send("I'm not in a voice channel.")
 
 		elif not getattr(ctx.author.voice, "channel", None):
-			return await ctx.respond("You are not in a voice channel.")
+			return await ctx.send("You are not in a voice channel.")
 		
 		vc: wavelink.Player = ctx.voice_client
 
 		if vc.queue.is_empty:
-			return await ctx.respond("Queue is empty. Cannot clear anything.")
+			return await ctx.send("Queue is empty. Cannot clear anything.")
 
-		await ctx.respond("Queue has been cleared.")
+		await ctx.send("Queue has been cleared.")
 		return vc.queue.clear()
 
 	# Volume Command
 
-	@bridge.bridge_command(description = "Set bot's volume.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
-	async def volume(self, ctx: bridge.BridgeContext, volume: int):
+	@commands.command(description = "Set bot's volume.")
+	async def volume(self, ctx: commands.Context, volume: int):
 		if not ctx.voice_client:
-			return await ctx.respond("I'm not in a voice channel.")
+			return await ctx.send("I'm not in a voice channel.")
 
 		elif not getattr(ctx.author.voice, "channel", None):
-			return await ctx.respond("You are not in a voice channel.")
+			return await ctx.send("You are not in a voice channel.")
 			
 		else:
 			vc: wavelink.Player = ctx.voice_client
 
 		if not vc.is_playing():
-			return await ctx.respond("Play something before try to set my volume.")
+			return await ctx.send("Play something before try to set my volume.")
 		
 		if volume > 100:
-			return await ctx.respond("🔊 Please select a volume lower than 100.")
+			return await ctx.send("🔊 Please select a volume lower than 100.")
 			
 		elif volume < 0:
-			return await ctx.respond("🔊 Please select a volume higher than 0.")
+			return await ctx.send("🔊 Please select a volume higher than 0.")
 
-		await ctx.respond(f"🔊 Set the volume to `{volume}%`")
+		await ctx.send(f"🔊 Set the volume to `{volume}%`")
 		return await vc.set_volume(volume)
 
-	@bridge.bridge_command(description = "Show information about the current track.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
-	async def nowplaying(self, ctx: bridge.BridgeContext):
+	@commands.command(description = "Show information about the current track.")
+	async def nowplaying(self, ctx: commands.Context):
 		if not ctx.voice_client:
-			return await ctx.respond("I'm not in a voice channel.")
+			return await ctx.send("I'm not in a voice channel.")
 
 		elif not getattr(ctx.author.voice, "channel", None):
-			return await ctx.respond("You are not in a voice channel.")
+			return await ctx.send("You are not in a voice channel.")
 			
 		else:
 			vc: wavelink.Player = ctx.voice_client
 
 		if not vc.is_playing():
-			return await ctx.respond("Nothing is playing.")
+			return await ctx.send("Nothing is playing.")
 
-		embed = discord.Embed(
+		embed = nextcord.Embed(
 			title = f"Now Playing {vc.track.title}", 
 			description = f"Artist: {vc.track.author}",
-			color = discord.Color.yellow()
+			color = nextcord.Color.yellow()
 		).set_author(
 			name = "Killer Bot | Music",
 			icon_url = self.bot.user.avatar.url
@@ -456,7 +456,7 @@ class Music(commands.Cog):
 
 		embed.add_field(name = "Duration", value = f"`{str(timedelta(seconds = vc.track.length))}`")
 
-		return await ctx.respond(embed = embed)
+		return await ctx.send(embed = embed)
 
 def setup(bot):
 	bot.add_cog(Music(bot))

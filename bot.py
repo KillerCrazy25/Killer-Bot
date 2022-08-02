@@ -1,63 +1,63 @@
-import discord, os, asyncio
-from discord.ext import commands, bridge
+import nextcord, os, asyncio
+from nextcord.ext import commands
 
 from utils.config import DEVELOPER_ID, MAIN_GUILD_ID, PREFIX, TESTING_GUILD_ID, TOKEN
 
 from datetime import datetime
 from pytz import timezone
 
-intents = discord.Intents.all()
+intents = nextcord.Intents.all()
 
-bot = bridge.Bot(command_prefix = commands.when_mentioned_or(PREFIX), intents = intents, help_command = None)
+bot = commands.Bot(command_prefix = commands.when_mentioned_or(PREFIX), intents = intents, help_command = None)
 
 # Ready Event
 
 @bot.event
 async def on_ready():
 	print(f"Bot is ready as {bot.user}")
-	await bot.change_presence(activity = discord.Game(name = "Use k!help to see all my commands!"))
+	await bot.change_presence(activity = nextcord.Game(name = "Use k!help to see all my commands!"))
 	
 # Load Command
 
-@bot.bridge_command(description = "Load extension.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
-async def load(ctx : bridge.BridgeContext, extension : str):
+@bot.command(description = "Load extension.")
+async def load(ctx : commands.Context, extension : str):
 	if ctx.author.id == DEVELOPER_ID:
 		try:
 			bot.load_extension(f"cogs.{extension}")
-			await ctx.respond(f"Successfully loaded `{extension}`!")
+			await ctx.send(f"Successfully loaded `{extension}`!")
 		except Exception as e:
-			await ctx.respond(f"Error loading `{extension}`!\n{e}")
+			await ctx.send(f"Error loading `{extension}`!\n{e}")
 	else:
-		await ctx.respond(f"You are not the developer of this bot!")
+		await ctx.send(f"You are not the developer of this bot!")
 
 # Unload Command
 
-@bot.bridge_command(description = "Unload extension.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
-async def unload(ctx : bridge.BridgeContext, extension : str):
+@bot.command(description = "Unload extension.")
+async def unload(ctx : commands.Context, extension : str):
 	if ctx.author.id == DEVELOPER_ID:
 		try:
 			bot.unload_extension(f"cogs.{extension}")
-			await ctx.respond(f"Successfully unloaded `{extension}`!")
+			await ctx.send(f"Successfully unloaded `{extension}`!")
 		except Exception as e:
-			await ctx.respond(f"Error unloading `{extension}`!\n{e}")
+			await ctx.send(f"Error unloading `{extension}`!\n{e}")
 	else:
-		await ctx.respond(f"You are not the developer of this bot!")
+		await ctx.send(f"You are not the developer of this bot!")
 
 # Reload Command
 
-@bot.bridge_command(description = "Reload extension.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
-async def reload(ctx : bridge.BridgeContext, extension : str):
+@bot.command(description = "Reload extension.")
+async def reload(ctx : commands.Context, extension : str):
 	if ctx.author.id == DEVELOPER_ID:
 		try:
 			await ctx.defer()
 			bot.unload_extension(f"cogs.{extension}")
 			await asyncio.sleep(3)
 			bot.load_extension(f"cogs.{extension}")
-			await ctx.respond(f"Successfully reloaded `{extension}`!")
+			await ctx.send(f"Successfully reloaded `{extension}`!")
 		except Exception as e:
-			await ctx.respond(f"Error reloading `{extension}`!\n{e}")
+			await ctx.send(f"Error reloading `{extension}`!\n{e}")
 	else:
-		await ctx.respond(f"You are not the developer of this bot!")
+		await ctx.send(f"You are not the developer of this bot!")
 
 # Load All Cogs 
 
@@ -68,7 +68,7 @@ for filename in os.listdir("./cogs"):
 
 # Help View
 
-class HelpDropdown(discord.ui.View):
+class HelpDropdown(nextcord.ui.View):
 
 	# Help Dropdown Constructor
 
@@ -84,18 +84,18 @@ class HelpDropdown(discord.ui.View):
 
 	# Select Menu
 
-	@discord.ui.select(
+	@nextcord.ui.select(
 		placeholder = "Choose your help page",
 		min_values = 1,
 		max_values = 1,
 		options = [
-			discord.SelectOption(
+			nextcord.SelectOption(
 				label = "Moderation", description = f"`{PREFIX}help moderation`"
 			),
-			discord.SelectOption(
+			nextcord.SelectOption(
 				label = "League Of Legends", description = f"`{PREFIX}help lol`"
 			),
-			discord.SelectOption(
+			nextcord.SelectOption(
 				label = "Music", description = f"`{PREFIX}help music`"
 			),
 		],
@@ -103,11 +103,11 @@ class HelpDropdown(discord.ui.View):
 
 	# Select Menu Callback
 
-	async def help_callback(self, select, interaction: discord.Interaction):
+	async def help_callback(self, select, interaction: nextcord.Interaction):
 		if interaction.user.id != self.user.id:
-			embed = discord.Embed(
+			embed = nextcord.Embed(
 				description = "This is not for you!",
-				color = discord.Color.red(),
+				color = nextcord.Color.red(),
 				timestamp = datetime.now(tz = timezone("US/Eastern"))
 			).set_author(
 				name = "Killer Bot | Help",
@@ -116,9 +116,9 @@ class HelpDropdown(discord.ui.View):
 			return await interaction.response.send_message(embed = embed, ephemeral = True)
 		select.placeholder = f"{select.values[0]} Help Page"
 		if select.values[0] == "Moderation":
-			embed = discord.Embed(
+			embed = nextcord.Embed(
 				title = f"Moderation Commands:",
-				color = discord.Color.blurple(),
+				color = nextcord.Color.blurple(),
 				timestamp = datetime.now(tz = timezone("US/Eastern"))
 			).set_author(
 				name = "Killer Bot | Help",
@@ -129,15 +129,15 @@ class HelpDropdown(discord.ui.View):
 				if not description or description is None or description == "":
 					description = "No description"
 				embed.add_field(
-					name = f"`{PREFIX}{command.name}`",
+					name = f"`{PREFIX}{command.name} {command.signature}`",
 					value = description,
 					inline = False
 				)
 			await interaction.response.edit_message(embed = embed, view = self)
 		elif select.values[0] == "League Of Legends":
-			embed = discord.Embed(
+			embed = nextcord.Embed(
 				title = f"League Of Legends Commands:",
-				color = discord.Color.blurple(),
+				color = nextcord.Color.blurple(),
 				timestamp = datetime.now(tz = timezone("US/Eastern"))
 			).set_author(
 				name = "Killer Bot | Help",
@@ -148,15 +148,15 @@ class HelpDropdown(discord.ui.View):
 				if not description or description is None or description == "":
 					description = "No description"
 				embed.add_field(
-					name = f"`{PREFIX}{command.name}`",
+					name = f"`{PREFIX}{command.name} {command.signature}`",
 					value = description,
 					inline = False
 				)
 			await interaction.response.edit_message(embed = embed, view = self)
 		elif select.values[0] == "Music":
-			embed = discord.Embed(
+			embed = nextcord.Embed(
 				title = f"Music Commands:",
-				color = discord.Color.blurple(),
+				color = nextcord.Color.blurple(),
 				timestamp = datetime.now(tz = timezone("US/Eastern"))
 			).set_author(
 				name = "Killer Bot | Help",
@@ -167,7 +167,7 @@ class HelpDropdown(discord.ui.View):
 				if not description or description is None or description == "":
 					description = "No description"
 				embed.add_field(
-					name = f"`{PREFIX}{command.name}`",
+					name = f"`{PREFIX}{command.name} {command.signature}`",
 					value = description,
 					inline = False
 				)
@@ -175,15 +175,15 @@ class HelpDropdown(discord.ui.View):
 
 	# Close Button
 
-	@discord.ui.button(
+	@nextcord.ui.button(
 		label = "Close",
-		style = discord.ButtonStyle.red
+		style = nextcord.ButtonStyle.red
 	)
-	async def close_callback(self, button, interaction : discord.Interaction):
+	async def close_callback(self, button, interaction : nextcord.Interaction):
 		if interaction.user.id != self.user.id:
-			embed = discord.Embed(
+			embed = nextcord.Embed(
 				description = "This is not for you!",
-				color = discord.Color.red(),
+				color = nextcord.Color.red(),
 				timestamp = datetime.now(tz = timezone("US/Eastern"))
 			).set_author(
 				name = "Killer Bot | Help",
@@ -199,9 +199,9 @@ class HelpDropdown(discord.ui.View):
 @bot.group(invoke_without_command = True)
 async def help(ctx):
 	view = HelpDropdown(ctx.author)
-	embed = discord.Embed(
+	embed = nextcord.Embed(
 		title = f"Help",
-		color = discord.Color.blurple(),
+		color = nextcord.Color.blurple(),
 		timestamp = datetime.now(tz = timezone("US/Eastern"))
 	).set_author(
 		name = "Killer Bot | Help",
@@ -217,16 +217,16 @@ async def help(ctx):
 		text = f"Requested by {ctx.author}",
 		icon_url = f"{ctx.author.avatar.url}",
 	)
-	await ctx.respond(embed = embed, view = view)
+	await ctx.send(embed = embed, view = view)
 
 # Moderation Argument
 
 @help.command()
-async def moderation(ctx : bridge.BridgeContext):
+async def moderation(ctx : commands.Context):
 	view = HelpDropdown(ctx.author)
-	embed = discord.Embed(
+	embed = nextcord.Embed(
 		title=f"Moderation Commands:",
-		color = discord.Color.blurple(),
+		color = nextcord.Color.blurple(),
 		timestamp = datetime.now(tz = timezone("US/Eastern"))
 	).set_author(
 		name = "Killer Bot | Help",
@@ -237,20 +237,20 @@ async def moderation(ctx : bridge.BridgeContext):
 		if not description or description is None or description == "":
 			description = "No description"
 		embed.add_field(
-			name = f"`{PREFIX}{command.name}`",
+			name = f"`{PREFIX}{command.name} {command.signature}`",
 			value = description,
 			inline = False
 		)
-	await ctx.respond(embed = embed, view = view)
+	await ctx.send(embed = embed, view = view)
 
 # League of Legends Argument
 
 @help.command()
-async def lol(ctx : bridge.BridgeContext):
+async def lol(ctx : commands.Context):
 	view = HelpDropdown(ctx.author)
-	embed = discord.Embed(
+	embed = nextcord.Embed(
 		title=f"League Of Legends Commands:",
-		color = discord.Color.blurple(),
+		color = nextcord.Color.blurple(),
 		timestamp = datetime.now(tz = timezone("US/Eastern"))
 	).set_author(
 		name = "Killer Bot | Help",
@@ -261,20 +261,20 @@ async def lol(ctx : bridge.BridgeContext):
 		if not description or description is None or description == "":
 			description = "No description"
 		embed.add_field(
-			name = f"`{PREFIX}{command.name}`",
+			name = f"`{PREFIX}{command.name} {command.signature}`",
 			value = description,
 			inline = False
 		)
-	await ctx.respond(embed = embed, view = view)
+	await ctx.send(embed = embed, view = view)
 
 # Music Argument
 
 @help.command()
-async def music(ctx : bridge.BridgeContext):
+async def music(ctx : commands.Context):
 	view = HelpDropdown(ctx.author, ctx.message)
-	embed = discord.Embed(
+	embed = nextcord.Embed(
 		title = f"Music Commands:",
-		color = discord.Color.blurple(),
+		color = nextcord.Color.blurple(),
 		timestamp = datetime.now(tz = timezone("US/Eastern"))
 	).set_author(
 		name = "Killer Bot | Help",
@@ -285,11 +285,11 @@ async def music(ctx : bridge.BridgeContext):
 		if not description or description is None or description == "":
 			description = "No description"
 		embed.add_field(
-			name = f"`{PREFIX}{command.name}`",
+			name = f"`{PREFIX}{command.name} {command.signature}`",
 			value = description,
 			inline = False
 		)
-	await ctx.respond(embed = embed, view = view)
+	await ctx.send(embed = embed, view = view)
 
 # Run Bot
 
