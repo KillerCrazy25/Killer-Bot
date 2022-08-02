@@ -1,5 +1,7 @@
 from bs4 import BeautifulSoup
-import requests
+import requests, asyncio
+
+from lxml import etree
 
 # Function That Gets Champion Analytics Via WebScraping U.GG Website
 
@@ -57,6 +59,19 @@ def get_champion_analytics(champion : str = "annie", region : str = "NA", elo : 
 			stats.append(stat.text)
 
 		return stats
+
+# Function That Gets Champions Tierlist Via WebScraping U.GG Website
+
+def get_tierlist():
+	r = requests.get(url = "https://u.gg/lol/mid-lane-tier-list")
+
+	soup = BeautifulSoup(r.content, "html.parser")
+
+	dom = etree.HTML(str(soup))
+
+	with open("output.txt", "w") as f:
+		f.write(str(soup))
+		f.close()
 
 # Function That Converts Cassiopeia's Elo Format To Riot's Elo Format
 

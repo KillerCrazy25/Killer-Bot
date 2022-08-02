@@ -4,7 +4,7 @@ from cassiopeia import *
 
 from discord.ext import commands, bridge
 
-from utils.utils import from_gg_to_normal, from_normal_to_gg, get_embed_color, get_mastery_emoji, get_rank_emoji, get_champion_analytics, from_cass_to_riot, from_riot_to_cass, human_format
+from utils.utils import from_gg_to_normal, from_normal_to_gg, get_embed_color, get_mastery_emoji, get_rank_emoji, get_champion_analytics, from_cass_to_riot, from_riot_to_cass, human_format, get_tierlist
 from utils.config import MAIN_GUILD_ID, TESTING_GUILD_ID, CASSIOPEIA_CONFIG, RIOT_TOKEN
 
 from datetime import datetime
@@ -155,7 +155,7 @@ class LeagueCommands(commands.Cog):
 
 		embed = discord.Embed(
 			title = f"{champion} Information",
-			description = f"Displaying statistics for {champion}\nElo: {embed_elo.upper()}\nRegion: {region.upper()}",
+			description = f"Displaying statistics for {champion}\nElo: {embed_elo.capitalize()}\nRegion: {region.capitalize()}",
 			color = int(embed_color, 16),
 			timestamp = datetime.now(tz = timezone("US/Eastern"))	
 		)

@@ -1,5 +1,6 @@
 .env
-cassiopeia.json
 config.json
 warns.db
 .gitignore
+/workspaces/Killer-Bot/cogs/__pycache__
+/workspaces/Killer-Bot/utils/__pycache__

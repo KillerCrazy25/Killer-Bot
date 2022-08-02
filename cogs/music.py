@@ -151,14 +151,12 @@ class Music(commands.Cog):
 		next_song = vc.queue.get()
 
 		await vc.play(next_song)
-		await ctx.respond(f"Now playing: {next_song.title}")
+		await ctx.send(f"Now playing: {next_song.title}")
 
 	# Play Command	
 
 	@bridge.bridge_command(description = "Play a track.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
 	async def play(self, ctx : bridge.BridgeContext, *, search : wavelink.YouTubeTrack):
-		await ctx.defer()
-
 		if not ctx.voice_client:
 			vc : wavelink.Player = await ctx.author.voice.channel.connect(cls = wavelink.Player)
 
@@ -274,8 +272,8 @@ class Music(commands.Cog):
 		try:
 			next_song = vc.queue.get()
 
-			await ctx.respond(f"Now Playing `{next_song}`")		
-			return await vc.play(next_song)
+			await vc.play(next_song)
+			await ctx.send(f"Now Playing `{next_song}`")		
 
 		except Exception:
 			return await ctx.respond("Queue is empty. Add tracks to queue using `k!play`.")
@@ -458,7 +456,7 @@ class Music(commands.Cog):
 
 		embed.add_field(name = "Duration", value = f"`{str(timedelta(seconds = vc.track.length))}`")
 
-		return await ctx.send(embed = embed)
+		return await ctx.respond(embed = embed)
 
 def setup(bot):
 	bot.add_cog(Music(bot))

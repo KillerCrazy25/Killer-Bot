@@ -74,7 +74,13 @@ class HelpDropdown(discord.ui.View):
 
 	def __init__(self, user):
 		self.user = user
-		super().__init__(timeout = None)
+		super().__init__(timeout = 600)
+
+	async def on_timeout(self):
+		for child in self.children:
+			child.disabled = True
+
+		await self.message.edit(view = self)
 
 	# Select Menu
 
@@ -174,6 +180,17 @@ class HelpDropdown(discord.ui.View):
 		style = discord.ButtonStyle.red
 	)
 	async def close_callback(self, button, interaction : discord.Interaction):
+		if interaction.user.id != self.user.id:
+			embed = discord.Embed(
+				description = "This is not for you!",
+				color = discord.Color.red(),
+				timestamp = datetime.now(tz = timezone("US/Eastern"))
+			).set_author(
+				name = "Killer Bot | Help",
+				icon_url = bot.user.avatar.url
+			)
+			return await interaction.response.send_message(embed = embed, ephemeral = True)
+
 		await interaction.response.send_message("Closed help menu!", ephemeral = True)
 		await interaction.message.delete()
 
