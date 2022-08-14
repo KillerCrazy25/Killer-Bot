@@ -1,5 +1,5 @@
 import nextcord, os, asyncio
-from nextcord.ext import commands
+from nextcord.ext import commands, tasks
 
 from utils.config import DEVELOPER_ID, MAIN_GUILD_ID, PREFIX, TESTING_GUILD_ID, TOKEN
 
@@ -15,7 +15,21 @@ bot = commands.Bot(command_prefix = commands.when_mentioned_or(PREFIX), intents 
 @bot.event
 async def on_ready():
 	print(f"Bot is ready as {bot.user}")
+	await change_presence_task.start()
+
+# Change Presence Task
+
+@tasks.loop(seconds = 10)
+async def change_presence_task():
 	await bot.change_presence(activity = nextcord.Game(name = "Use k!help to see all my commands!"))
+	await asyncio.sleep(5)
+	await bot.change_presence(activity = nextcord.Game(name = "Write me on DM to send a message to moderators!"))
+	await asyncio.sleep(5)
+	await bot.change_presence(activity = nextcord.Activity(type = nextcord.ActivityType.watching, name = f"{len(bot.guilds)} servers!"))
+	await asyncio.sleep(5)
+	await bot.change_presence(activity = nextcord.Activity(type = nextcord.ActivityType.watching, name = f"{len(bot.users)} users!"))
+	await asyncio.sleep(5)
+	await bot.change_presence(activity = nextcord.Game(name = "Support Server: https://discord.gg/3WkeV2tNas"))	
 	
 # Load Command
 
@@ -73,8 +87,10 @@ class HelpDropdown(nextcord.ui.View):
 	# Help Dropdown Constructor
 
 	def __init__(self, user):
-		self.user = user
 		super().__init__(timeout = 600)
+		self.user = user
+		self.add_item(nextcord.ui.Button(label = "Support Server", url = "https://discord.gg/3WkeV2tNas"))
+		self.add_item(nextcord.ui.Button(label = "Source Code", url = "https://github.com/KillerCrazy25/Killer-Bot"))
 
 	async def on_timeout(self):
 		for child in self.children:
@@ -217,7 +233,7 @@ async def help(ctx):
 		text = f"Requested by {ctx.author}",
 		icon_url = f"{ctx.author.avatar.url}",
 	)
-	await ctx.send(embed = embed, view = view)
+	view.message = await ctx.send(embed = embed, view = view)
 
 # Moderation Argument
 
@@ -241,7 +257,7 @@ async def moderation(ctx : commands.Context):
 			value = description,
 			inline = False
 		)
-	await ctx.send(embed = embed, view = view)
+	view.message = await ctx.send(embed = embed, view = view)
 
 # League of Legends Argument
 
@@ -265,7 +281,7 @@ async def lol(ctx : commands.Context):
 			value = description,
 			inline = False
 		)
-	await ctx.send(embed = embed, view = view)
+	view.message = await ctx.send(embed = embed, view = view)
 
 # Music Argument
 
@@ -289,7 +305,7 @@ async def music(ctx : commands.Context):
 			value = description,
 			inline = False
 		)
-	await ctx.send(embed = embed, view = view)
+	view.message = await ctx.send(embed = embed, view = view)
 
 # Run Bot
 

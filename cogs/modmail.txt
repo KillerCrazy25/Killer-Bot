@@ -1,0 +1,54 @@
+from datetime import datetime, timedelta
+import nextcord
+from nextcord.ext import commands
+from pytz import timezone
+
+from utils.config import MODMAIL_CHANNEL_ID
+
+# ModMail Cog
+
+class ModMail(commands.Cog):
+
+	# ModMail Constructor
+
+	def __init__(self, bot : commands.Bot):
+		self.bot : commands.Bot = bot		
+
+	# Create DM Listener
+	@commands.Cog.listener()
+	async def on_message(self, message : nextcord.Message):
+		if message.author.bot:
+			return
+
+		if message.author.id == self.bot.user.id:
+			return
+		
+		if message.channel.type != "private":
+			await self.bot.process_commands(message)
+			return
+
+		await self.bot.process_commands(message)
+
+		embed = nextcord.Embed(
+			description = "New ModMail Message!",
+			color = nextcord.Color.random(),
+			timestamp = datetime.now(tz = timezone("US/Eastern"))
+		)
+		
+		embed.set_thumbnail(message.author.avatar.url)
+		embed.set_author(name = "Mod Mail", icon_url = self.bot.user.avatar.url)
+		embed.set_footer(text = f"ID: {str(message.id)}")
+
+		embed.add_field(name = "User", value = f"{message.author} | ID: {message.author.id}", inline = False)
+		embed.add_field(name = "Message", value = message.content, inline = False)
+
+		if message.attachments:
+			embed.set_image(url = message.attachments[0].url)
+
+		mod_mail_channel = self.bot.get_channel(MODMAIL_CHANNEL_ID)
+
+		await mod_mail_channel.send(embed = embed)
+		await message.author.send("Your message has been sent to the modmail channel. If neccessary, a moderator is gonna DM you.")
+
+def setup(bot : commands.Bot):
+	bot.add_cog(ModMail(bot))

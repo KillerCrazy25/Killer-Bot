@@ -11,7 +11,8 @@
 	"channel_ids" : {
 		"error_channel_id" : 998431318843068456,
 		"logs_channel_id" : 998431424724095106,
-		"welcome_channel_id" : 998431424724095106
+		"welcome_channel_id" : 1004185528255660064,
+		"modmail_channel_id" : 1004185486941769768
 	},
 	"lavalink" : {
 		"host" : "lavalinkinc.ml",

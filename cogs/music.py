@@ -167,6 +167,7 @@ class Music(commands.Cog):
 			vc: wavelink.Player = ctx.voice_client
 
 		if vc.queue.is_empty and not vc.is_playing():
+			view = Panel(vc, ctx, self.bot)
 			await vc.play(search)	
 
 			embed = nextcord.Embed(
@@ -181,7 +182,7 @@ class Music(commands.Cog):
 			embed.set_thumbnail(url = search.thumbnail)
 			embed.set_image(url = search.thumbnail)
 
-			await ctx.send(embed = embed, view = Panel(vc, ctx, self.bot))
+			view.message = await ctx.send(embed = embed, view = view)
 
 		else:
 			await vc.queue.put_wait(search)
@@ -273,10 +274,11 @@ class Music(commands.Cog):
 			next_song = vc.queue.get()
 
 			await vc.play(next_song)
-			await ctx.send(f"Now Playing `{next_song}`")		
+			return await ctx.send(f"Now Playing `{next_song}`")		
 
 		except Exception:
-			return await ctx.send("Queue is empty. Add tracks to queue using `k!play`.")
+			await vc.stop()
+			return await ctx.send("⏹ Stopped because queue is empty.")
 
 	# Stop Command
 

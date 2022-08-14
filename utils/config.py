@@ -22,6 +22,7 @@ DEVELOPER_ID = config["user_ids"]["developer_id"]
 ERROR_CHANNEL_ID = config["channel_ids"]["error_channel_id"]
 LOGS_CHANNEL_ID = config["channel_ids"]["logs_channel_id"]
 WELCOME_CHANNEL_ID = config["channel_ids"]["welcome_channel_id"]
+MODMAIL_CHANNEL_ID = config["channel_ids"]["modmail_channel_id"]
 
 LAVALINK_HOST = config["lavalink"]["host"]
 LAVALINK_PORT = config["lavalink"]["port"]
