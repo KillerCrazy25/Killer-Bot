@@ -1,0 +1,109 @@
+import nextcord, asyncio, subprocess
+
+from nextcord.ext import commands
+from helpers.config import PREFIX
+
+# Start Server Function
+async def start_server(self, server, channel):
+	subprocess.run(f'screen -S {server} -X stuff "python3 test.py^M"', shell = True)
+
+	await channel.send(f'Start instruction received. Now starting server `{server}`...')
+
+# Stop Server Function
+async def stop_server(self, server, channel):
+	subprocess.run(f'screen -S {server} -X stuff "stop^M"', shell = True)
+
+	await channel.send(f'Stop instructing received. Now stopping server `{server}`...')
+
+# Restart Server Function
+async def restart_server(self, server, channel):
+	subprocess.run(f'screen -S {server} -X stuff "stop^M"', shell = True)
+	asyncio.sleep(15)
+	subprocess.run(f'screen -S {server} -X stuff "python3 test.py^M"', shell = True)
+
+	await channel.send(f'Restart instruction received. Now restarting server `{server}`...')
+
+# Server Buttons View
+class ServerButtons(nextcord.ui.View):
+
+	# Server Buttons Constructor
+
+	def __init__(self, server):
+		super().__init__(timeout = None)
+		self.server = server
+
+	# Start Server Button
+
+	@nextcord.ui.button(label = "Start Server", style = nextcord.ButtonStyle.success, custom_id = "start_server")
+	async def start_callback(self, button : nextcord.ui.Button, interaction : nextcord.Interaction):
+		await interaction.response.send_message(f"Sended start instruction to {self.server}")
+		await start_server(server = self.server, channel = interaction.channel)
+
+	# Stop Server Button
+
+	@nextcord.ui.button(label = "Stop Server", style = nextcord.ButtonStyle.red, custom_id = "stop_server")
+	async def stop_callback(self, button : nextcord.ui.Button, interaction : nextcord.Interaction):
+		await interaction.response.send_message("Stopping server...")
+		await stop_server(server = self.server, channel = interaction.channel)
+
+	# Restart Server Button
+
+	@nextcord.ui.button(label = "Restart Server", style = nextcord.ButtonStyle.gray, custom_id = "restart_server")
+	async def restart_callback(self, button : nextcord.ui.Button, interaction : nextcord.Interaction):
+		await interaction.response.send_message("Restarting server...")
+		await restart_server(server = self.server, channel = interaction.channel)
+
+# Server Control Cog
+
+class ServerControl(commands.Cog):
+
+	# Server Control Constructor
+
+	def __init__(self, bot : commands.Bot):
+		self.bot : commands.Bot = bot
+		self.blocked_characters = ["`", "~", "!", "@", "#", "$", "%", "^", "&", "*", "(", ")", "+", "=", "|", "\\", "{", "}", "[", "]", ":", ";", "\"", "'", ",", "<", ".", ">", "/", "?", " "]
+
+	# Setup Command
+
+	@commands.command(description = "Create panel command.")
+	@commands.has_permissions(administrator = True)
+	async def createpanel(self, ctx : commands.Context):
+		await ctx.send("\n\n\n\n> Please enter a server name\n\n\n\n")
+		try:
+			msg = await self.bot.wait_for("message", check = lambda m: m.author.id == ctx.author.id and m.channel.id == ctx.channel.id, timeout = 30)
+
+			if msg.content.startswith(PREFIX):
+				return await ctx.send(f"\n\n\n\n> You can't use {PREFIX} as a server name!\n\n\n\n")
+
+			if msg.content == "":
+				return await ctx.send("\n\n\n\n> You must enter a server name!\n\n\n\n")
+
+			if any(char in msg.content for char in self.blocked_characters):
+				return await ctx.send("\n\n\n\n> You can't use special characters in your server name!\n\n\n\n")
+
+			server_name = msg.content
+
+			await ctx.send(f"\n\n\n\n> Your server name has been set to `{server_name}`.\n\n\n\n")
+			await asyncio.sleep(5)
+
+			channel_name =  f"manage-{server_name}"
+
+			await ctx.send("\n\n\n\n> Creating your server's panel channel...\n\n\n\n")
+			await asyncio.sleep(5)
+
+			channel : nextcord.TextChannel = await ctx.guild.create_text_channel(channel_name)
+			await ctx.send(f"\n\n\n\n> Panel {channel.mention} has been created!\n\n\n\n")
+
+			view = ServerButtons(server_name)
+
+			await channel.send(embed = nextcord.Embed(
+				title = f"{server_name} Panel", 
+				description = f"Manage {server_name} by clicking buttons below.", 
+				color = nextcord.Color.blue()
+			), view = view)
+
+		except asyncio.TimeoutError:
+			return await ctx.send("\n\n\n\n> Timed out. Please enter a **server name** within **30 seconds**.\n\n\n\n")
+
+def setup(bot : commands.Bot):
+	bot.add_cog(ServerControl(bot))
