@@ -1,29 +1,28 @@
-import nextcord, cassiopeia as cass, os, random, matplotlib.pyplot as plt
+import nextcord, cassiopeia as cass, os, random, matplotlib.pyplot as plt, pandas as pd, numpy as np, matplotlib.table
 
 from cassiopeia import *
 
 from nextcord.ext import commands
 
-from utils.utils import from_gg_to_normal, from_normal_to_gg, get_embed_color, get_mastery_emoji, get_rank_emoji, get_champion_analytics, from_cass_to_riot, from_riot_to_cass, human_format, get_tierlist
-from utils.config import MAIN_GUILD_ID, TESTING_GUILD_ID, CASSIOPEIA_CONFIG, RIOT_TOKEN
+from helpers.utils import *
+from helpers.config import MAIN_GUILD_ID, TESTING_GUILD_ID, CASSIOPEIA_CONFIG, RIOT_TOKEN
 
 from datetime import datetime
 from pytz import timezone
+
+from pandas.plotting import table
 
 cass.set_riot_api_key(RIOT_TOKEN)
 cass.apply_settings(CASSIOPEIA_CONFIG)
 
 # League Cog
-
 class LeagueCommands(commands.Cog):
 
 	# League Constructor
-	
 	def __init__(self, bot):
 		self.bot = bot
 
 	# Profile Command
-
 	@commands.command(description = "Profile command.")
 	async def profile(self, ctx: commands.Context, user : str = "Josedeodo", region : str = "NA"):
 
@@ -125,7 +124,7 @@ class LeagueCommands(commands.Cog):
 		embed.set_thumbnail(url = summoner.profile_icon.url)
 
 		file_ = nextcord.File(f"{user}.png")
-		embed .set_image(url = f"attachment://{user}.png")
+		embed.set_image(url = f"attachment://{user}.png")
 
 		await ctx.send(embed = embed, file = file_)
 
@@ -135,7 +134,6 @@ class LeagueCommands(commands.Cog):
 			print(f"{user}.png was not found on local files.")
 
 	# Champ Command
-
 	@commands.command(description = "Show champion analytics by U.GG")
 	async def champ(self, ctx: commands.Context, champion : str = "Annie", region : str = "world", elo : str = "all"):
 		champ = Champion(name = champion, region = "NA")
@@ -155,7 +153,7 @@ class LeagueCommands(commands.Cog):
 
 		embed = nextcord.Embed(
 			title = f"{champion} Information",
-			description = f"Displaying statistics for {champion}\nElo: {embed_elo.capitalize()}\nRegion: {region.capitalize()}",
+			description = f"Displaying statistics for {champion}\nElo: {embed_elo.capitalize()}\nRegion: {region.upper()}",
 			color = int(embed_color, 16),
 			timestamp = datetime.now(tz = timezone("US/Eastern"))	
 		)
@@ -169,7 +167,6 @@ class LeagueCommands(commands.Cog):
 		await ctx.send(embed = embed)
 
 	# RandomChamp Command
-
 	@commands.command(description = "Choose a random champion.")
 	async def randomchamp(self, ctx : commands.Context):
 		champs = cass.get_champions(region = "NA")
@@ -187,6 +184,59 @@ class LeagueCommands(commands.Cog):
 		embed.set_footer(text = f"Requested by {ctx.author}", icon_url = ctx.author.avatar.url)
 
 		await ctx.send(embed = embed)
+
+	# Tierlist Command
+	@commands.command(description = "Show champion tierlist by OP.GG")
+	async def tierlist(self, ctx : commands.Context, region : str = "NA", elo : str = "platinum+", role : str = "top"):
+		embed = nextcord.Embed(
+			title = "Champion Tierlist",
+			description = f"Data provided by OP.GG",
+			color = nextcord.Color.random(),
+			timestamp = datetime.now(tz = timezone("US/Eastern"))	
+		)
+
+		tierlist = get_tierlist(region = region, tier = elo, position = role)	
+
+		df = pd.DataFrame(tierlist)
+
+		df.columns = ["Rank", "Champion", "Tier", "Win Rate", "Pick Rate", "Ban Rate"]
+
+		df.sort_values(by = "Tier", inplace = True, ascending = True)
+		df.reset_index(drop = True, inplace = True)
+		df.drop(columns = ["Rank"], inplace = True)
+		df.index = np.arange(1, len(df) + 1)
+
+		fig, ax = plt.subplots(figsize = (21, 15))
+
+		ax.xaxis.set_visible(False) 
+		ax.yaxis.set_visible(False)
+		ax.set_frame_on(False)
+		ax.set_title(
+			"Tierlist for " + region.upper() + " | " + elo.capitalize() + " | " + role.capitalize(), 
+			fontsize = 30, 
+			fontweight = "bold", 
+			color = "white"
+		)
+
+		table_ = table(ax, df, loc = "upper right", colWidths = [0.17] * len(df.columns))
+		table_.auto_set_font_size(False)
+		table_.set_fontsize(15)
+		table_.scale(1.1, 1.2)
+
+		plt.savefig("tierlist.png", transparent = True)
+
+		file_ = nextcord.File("tierlist.png")
+
+		embed.set_image(url = "attachment://tierlist.png")
+		embed.set_author(name = "Killer Bot | League Of Legends Champion Tierlist", icon_url = self.bot.user.avatar.url)
+		embed.set_footer(text = f"Requested by {ctx.author}", icon_url = ctx.author.avatar.url)
+
+		await ctx.send(embed = embed, file = file_)
+
+		try:
+			os.remove(f"tierlist.png")	
+		except:
+			print(f"tierlist.png was not found on local files.")
 
 def setup(bot):
 	bot.add_cog(LeagueCommands(bot))
