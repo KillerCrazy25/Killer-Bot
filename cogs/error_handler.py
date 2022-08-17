@@ -4,7 +4,7 @@ from nextcord.ext import commands
 from datetime import datetime
 from pytz import timezone
 
-from utils.config import ERROR_CHANNEL_ID, MAIN_GUILD_ID, TESTING_GUILD_ID, DEVELOPER_ID
+from helpers.config import ERROR_CHANNEL_ID, MAIN_GUILD_ID, TESTING_GUILD_ID, DEVELOPER_ID
 
 # Error Handler Cog
 
