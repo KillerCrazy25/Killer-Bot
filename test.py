@@ -1,0 +1,1 @@
+print("SIMULANDO INICIO DE UN SERVER...")
