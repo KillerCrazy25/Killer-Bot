@@ -1,7 +1,7 @@
 import nextcord, psutil
 from nextcord.ext import commands
 
-from utils.config import MAIN_GUILD_ID, PREFIX, TESTING_GUILD_ID, VERSION
+from helpers.config import MAIN_GUILD_ID, PREFIX, TESTING_GUILD_ID, VERSION
 
 class VarietyCommands(commands.Cog):
 

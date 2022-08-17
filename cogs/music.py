@@ -3,7 +3,7 @@ import nextcord, wavelink
 from pytz import timezone
 from nextcord.ext import commands
 
-from utils.config import MAIN_GUILD_ID, TESTING_GUILD_ID, LAVALINK_HOST, LAVALINK_PORT, LAVALINK_PASSWORD
+from helpers.config import MAIN_GUILD_ID, TESTING_GUILD_ID, LAVALINK_HOST, LAVALINK_PORT, LAVALINK_PASSWORD
 
 # Panel View
 

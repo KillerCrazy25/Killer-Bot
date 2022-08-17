@@ -5,7 +5,7 @@ from datetime import datetime
 
 from pytz import timezone
 
-from utils.config import MAIN_GUILD_ID, TESTING_GUILD_ID
+from helpers.config import MAIN_GUILD_ID, TESTING_GUILD_ID
 
 # Moderation Cog
 
