@@ -1,7 +1,7 @@
 import nextcord, os, asyncio
-from nextcord.ext import commands, tasks
+from nextcord.ext import commands, tasks, help_commands
 
-from utils.config import DEVELOPER_ID, MAIN_GUILD_ID, PREFIX, TESTING_GUILD_ID, TOKEN
+from helpers.config import DEVELOPER_ID, MAIN_GUILD_ID, PREFIX, TESTING_GUILD_ID, TOKEN
 
 from datetime import datetime
 from pytz import timezone
@@ -192,7 +192,7 @@ class HelpDropdown(nextcord.ui.View):
 	# Close Button
 
 	@nextcord.ui.button(
-		label = "Close",
+		label = "Dismiss",
 		style = nextcord.ButtonStyle.red
 	)
 	async def close_callback(self, button, interaction : nextcord.Interaction):
@@ -207,8 +207,10 @@ class HelpDropdown(nextcord.ui.View):
 			)
 			return await interaction.response.send_message(embed = embed, ephemeral = True)
 
-		await interaction.response.send_message("Closed help menu!", ephemeral = True)
-		await interaction.message.delete()
+		for child in self.children:
+			child.disabled = True
+
+		await self.message.edit(view = self)
 
 # Help Command
 
