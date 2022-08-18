@@ -191,7 +191,7 @@ class LeagueCommands(commands.Cog):
 		embed = nextcord.Embed(
 			title = "Champion Tierlist",
 			description = f"Data provided by OP.GG",
-			color = nextcord.Color.random(),
+			color = nextcord.Color.purple(),
 			timestamp = datetime.now(tz = timezone("US/Eastern"))	
 		)
 
@@ -210,6 +210,7 @@ class LeagueCommands(commands.Cog):
 
 		ax.xaxis.set_visible(False) 
 		ax.yaxis.set_visible(False)
+		
 		ax.set_frame_on(False)
 		ax.set_title(
 			"Tierlist for " + region.upper() + " | " + elo.capitalize() + " | " + role.capitalize(), 
@@ -237,6 +238,32 @@ class LeagueCommands(commands.Cog):
 			os.remove(f"tierlist.png")	
 		except:
 			print(f"tierlist.png was not found on local files.")
+
+	# # Tierlist Command Using Embed Instead Of Dataframe
+	# @commands.command(description = "Show champion tierlist by OP.GG")
+	# async def tierlist(self, ctx : commands.Context, region : str = "NA", elo : str = "platinum+", role : str = "top"):
+	# 	embed = nextcord.Embed(
+	# 		title = "Champion Tierlist",
+	# 		description = f"Data provided by OP.GG",
+	# 		color = nextcord.Color.random(),
+	# 		timestamp = datetime.now(tz = timezone("US/Eastern"))	
+	# 	)
+
+	# 	tierlist = get_tierlist(region = region, tier = elo, position = role)
+
+	# 	tierlist["tier"].sort()
+
+	# 	embed.add_field(name = "Position", value = f"\n".join(tierlist['tier']), inline = True) 
+	# 	embed.add_field(name = "Champion", value = f"\n".join(tierlist['champion']), inline = True) 
+	# 	embed.add_field(name = "Tier", value = f"\n".join(tierlist['level']), inline = True) 
+	# 	embed.add_field(name = "Win Rate", value = f"\n".join(tierlist['winrate']), inline = True) 
+	# 	embed.add_field(name = "Pick Rate", value = f"\n".join(tierlist['pickrate']), inline = True) 
+	# 	embed.add_field(name = "Ban Rate", value = f"\n".join(tierlist['banrate']), inline = True) 
+
+	# 	embed.set_author(name = "Killer Bot | League Of Legends Champion Tierlist", icon_url = self.bot.user.avatar.url)
+	# 	embed.set_footer(text = f"Requested by {ctx.author}", icon_url = ctx.author.avatar.url)
+
+	# 	await ctx.send(embed = embed)
 
 def setup(bot):
 	bot.add_cog(LeagueCommands(bot))

@@ -3,6 +3,7 @@ from nextcord.ext import commands
 
 from datetime import datetime
 from pytz import timezone
+from traceback import print_exc, print_exception
 
 from helpers.config import ERROR_CHANNEL_ID, MAIN_GUILD_ID, TESTING_GUILD_ID, DEVELOPER_ID
 

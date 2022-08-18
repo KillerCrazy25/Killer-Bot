@@ -75,7 +75,7 @@ def get_tierlist(region : Optional[str] = "na", tier : Optional[str] = "platinum
 
 	soup = BeautifulSoup(req.content, "html.parser")
 
-	table = soup.find("table", {"class": "css-i1zhjp e1oulx2j8"})
+	table = soup.find("table", {"class": "css-jgru8w e1oulx2j7"})
 	tbody = table.find("tbody")
 	all_champs_stats = tbody.find_all("tr")
 
