@@ -13,25 +13,25 @@ bot = commands.Bot(command_prefix = commands.when_mentioned_or(PREFIX), intents 
 async def on_ready():
 	print(f"Bot is ready as {bot.user}")
 
-	if DEBUG_CHANNEL_ID:
-		debug_channel = bot.get_channel(DEBUG_CHANNEL_ID)
+	# if DEBUG_CHANNEL_ID:
+	# 	debug_channel = bot.get_channel(DEBUG_CHANNEL_ID)
 
-		now = datetime.now(tz = timezone('US/Eastern'))
-		timestamp = datetime.timestamp(now)
+	# 	now = datetime.now(tz = timezone('US/Eastern'))
+	# 	timestamp = datetime.timestamp(now)
 
-		embed = nextcord.Embed(
-			color = nextcord.Color.og_blurple()		
-		)
+	# 	embed = nextcord.Embed(
+	# 		color = nextcord.Color.og_blurple()		
+	# 	)
 
-		embed.set_author(name = "I'm ready!", icon_url = bot.user.avatar.url)
+	# 	embed.set_author(name = "I'm ready!", icon_url = bot.user.avatar.url)
 
-		embed.add_field(name = "Bot Information", value = f"- User: `{bot.user}`\n- ID: `{bot.user.id}`\n- Prefix: `{PREFIX}`", inline = False)
-		embed.add_field(name = "Launch Information", value = f"- Debug Mode: **True**\n- Debug Channel: {debug_channel.mention}\n- Launched at: <t:{timestamp:.0f}>\n- Debug Guild IDs: `{MAIN_GUILD_ID}, {DEBUG_CHANNEL_ID}`", inline = False)
+	# 	embed.add_field(name = "Bot Information", value = f"- User: `{bot.user}`\n- ID: `{bot.user.id}`\n- Prefix: `{PREFIX}`", inline = False)
+	# 	embed.add_field(name = "Launch Information", value = f"- Debug Mode: **True**\n- Debug Channel: {debug_channel.mention}\n- Launched at: <t:{timestamp:.0f}>\n- Debug Guild IDs: `{MAIN_GUILD_ID}, {DEBUG_CHANNEL_ID}`", inline = False)
 
-		await debug_channel.send(embed = embed)
+	# 	await debug_channel.send(embed = embed)
 
-	else:
-		print("DEBUG CHANNEL ID NOT FOUND. DEBUG MODE DISABLED.")
+	# else:
+	# 	print("DEBUG CHANNEL ID NOT FOUND. DEBUG MODE DISABLED.")
 
 	await change_presence_task.start()
 
@@ -45,6 +45,7 @@ async def change_presence_task():
 	await bot.change_presence(activity = nextcord.Activity(type = nextcord.ActivityType.watching, name = f"{len(bot.users)} users!"))
 	await asyncio.sleep(5)
 	await bot.change_presence(activity = nextcord.Game(name = "Support Server: https://discord.gg/3WkeV2tNas"))	
+	await asyncio.sleep(5)
 	
 # Load Command
 @bot.command(description = "Load extension.")
