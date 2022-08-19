@@ -10,10 +10,15 @@
 	},
 	"channel_ids" : {
 		"error_channel_id" : 998431318843068456,
-		"logs_channel_id" : 998431424724095106,
+		"logs_channel_id" : 1009969884614103170,
 		"welcome_channel_id" : 1004185528255660064,
 		"modmail_channel_id" : 1004185486941769768,
 		"debug_channel_id" : 944819482222805063
+	},
+	"role_ids" : {
+		"admin_role_id" : 1002783195340734524,
+		"mod_role_id" : 1009659998202236989,
+		"user_role_id" : 1009660577548873809
 	},
 	"lavalink" : {
 		"host" : "lavalinkinc.ml",
