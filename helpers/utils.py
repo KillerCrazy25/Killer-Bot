@@ -336,3 +336,7 @@ def get_mastery_emoji(mastery : Optional[int]) -> str:
 		7 : "<:mastery7:993688390723715172>"
  	}
 	return masteries[mastery]
+
+# Function That Returns The Difference Between Two Dicts
+def get_difference(dict1 : dict, dict2 : dict) -> dict:
+	return {key: dict1[key] for key in dict1 if dict1[key] != dict2[key]}
