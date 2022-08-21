@@ -6,8 +6,9 @@ from helpers.config import MAIN_GUILD_ID, PREFIX, TESTING_GUILD_ID, VERSION
 class VarietyCommands(commands.Cog):
 
 	def __init__(self, bot : commands.Bot):
-		self.bot : commands.Bot = bot					
+		self.bot : commands.Bot = bot	
 
+	# Bot Info Command
 	@commands.command(description = "Bot info command.")
 	async def botinfo(self, ctx : commands.Context):
 
