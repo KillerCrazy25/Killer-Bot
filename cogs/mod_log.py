@@ -640,5 +640,29 @@ class ModLog(commands.Cog):
 		
 		await self.log_channel.send(embed = embed)
 
+	# Message Delete Event
+	@commands.Cog.listener()
+	async def on_message_delete(self, message : nextcord.Message):
+		"""Log message delete event to mod log."""
+		if message.guild.id not in GUILD_IDS: return
+
+		# Embed Builder
+		builder = EmbedBuilder(self.bot)
+
+		# Embed
+		embed = await builder.mod_log_embed(
+			message.author.avatar.url, message.author.color if message.author.color else nextcord.Color.purple(), message.author, f"Message deleted in {message.channel.mention}"
+		)
+
+		# Created At Timestamp
+		ts = message.created_at.timestamp()
+		
+		# Date & ID Fields
+		embed.add_field(name = "Content", value = message.content, inline = False)
+		embed.add_field(name = "Date", value = f"<t:{round(ts)}:F>")
+		embed.add_field(name = "ID", value = f"```ini\nUser = {message.author.id}\nMessage = {message.id}```", inline = False)
+		
+		await self.log_channel.send(embed = embed)
+		
 def setup(bot : commands.Bot):
 	bot.add_cog(ModLog(bot))
