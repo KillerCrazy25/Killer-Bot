@@ -3,6 +3,7 @@ from nextcord.ext import commands
 
 from helpers.config import *
 from helpers.embed_builder import EmbedBuilder
+from helpers.utils import get_difference
 from helpers import time
 
 from datetime import datetime
@@ -469,6 +470,175 @@ class ModLog(commands.Cog):
 		if not embed.fields[0].value: return 
 
 		await self.log_channel.send(embed = embed)
+
+	# Guild Role Create Event
+	@commands.Cog.listener()
+	async def on_guild_role_create(self, role : nextcord.Role):
+		"""Log role create event to mod log."""
+		if role.guild.id not in GUILD_IDS: return
+
+		# Embed Builder
+		builder = EmbedBuilder(self.bot)
+
+		async for entry in role.guild.audit_logs(limit = 1, action = nextcord.AuditLogAction.role_create):
+			perpetrator = entry.user
+			break
+
+		# Embed
+		embed = await builder.mod_log_embed(
+			perpetrator.avatar.url, nextcord.Color.blue(), perpetrator, "A role was created"
+		)
+
+		# Embed Fields
+		embed.add_field(
+			name = "Name",
+			value = role.name,
+			inline = False
+		)
+
+		embed.add_field(
+			name = "ID", 
+			value = f"```ini\nRole = {role.id}\nPerpetrator = {perpetrator.id}```", 
+			inline = False
+		)
 		
+		await self.log_channel.send(embed = embed)
+
+	# Guild Role Delete Event
+	@commands.Cog.listener()
+	async def on_guild_role_delete(self, role : nextcord.Role):
+		"""Log role delete event to mod log."""
+		if role.guild.id not in GUILD_IDS: return
+
+		# Embed Builder
+		builder = EmbedBuilder(self.bot)
+
+		async for entry in role.guild.audit_logs(limit = 1, action = nextcord.AuditLogAction.role_delete):
+			perpetrator = entry.user
+			reason = entry.reason
+			break
+
+		# Embed
+		embed = await builder.mod_log_embed(
+			perpetrator.avatar.url, nextcord.Color.red(), perpetrator, "A role was deleted"
+		)
+
+		# Embed Fields
+		embed.add_field(name = "Name", value = role.name, inline = False)
+		embed.add_field(name = "Reason", value = reason if reason else "None", inline = False)
+		embed.add_field(
+			name = "ID", 
+			value = f"```ini\nRole = {role.id}\nPerpetrator = {perpetrator.id}```", 
+			inline = False
+		)
+		
+		await self.log_channel.send(embed = embed)
+
+	# Guild Role Update Event
+	@commands.Cog.listener()
+	async def on_guild_role_update(self, before : nextcord.Role, after : nextcord.Role):
+		"""Log role update event to mod log."""
+		if before.guild.id not in GUILD_IDS: return
+
+		# Embed Builder
+		builder = EmbedBuilder(self.bot)
+
+		# Get Author Of Update
+		async for entry in before.guild.audit_logs(limit = 1, action = nextcord.AuditLogAction.role_update):
+			perpetrator = entry.user
+			break
+
+		# Embed
+		embed = await builder.mod_log_embed(
+			perpetrator.avatar.url, after.color if after.color else nextcord.Color.gold(), perpetrator, f"A role was updated ({after.name})"
+		)
+
+		# Role Properties
+		before_properties = {
+			"name": before.name,
+			"permissions": before.permissions,
+			"color": before.color,
+			"position": before.position,
+			"mentionable": before.mentionable,
+			"hoist": before.hoist,
+			"tags" : before.tags
+		}
+
+		after_properties = {
+			"name": after.name,
+			"permissions": after.permissions,
+			"color": after.color,
+			"position": after.position,
+			"mentionable": after.mentionable,
+			"hoist": after.hoist,
+			"tags" : after.tags
+		}
+
+		# Embed Fields
+		for property in before_properties:
+			# Position will not be logged due to channel spam.
+			if before_properties[property] != after_properties[property] and property != "position" and property != "permissions" and property != "tags":
+				embed.add_field(
+					name = property.capitalize(), 
+					value = f"Was: {str(before_properties[property])}\nNow: {str(after_properties[property])}", 
+					inline = False
+				)
+		
+		# Empty Dicts
+		before_perms = dict()
+		after_perms = dict()
+
+		before_perms_allowed = dict()
+		before_perms_denied = dict()
+
+		after_perms_allowed = dict()
+		after_perms_denied = dict()	
+
+		# Get Permissions Before
+		for perm, value in iter(before.permissions):
+			before_perms[perm] = value
+			if value == True:
+				before_perms_allowed[perm] = value
+			
+			else:
+				before_perms_denied[perm] = value
+
+		# Get Permissions After
+		for perm, value in iter(after.permissions):
+			after_perms[perm] = value
+			if value == True:
+				after_perms_allowed[perm] = value
+
+			else:
+				after_perms_denied[perm] = value
+
+		# Checking If Permissions Were Changed
+		if after_perms_allowed != before_perms_allowed or after_perms_denied != before_perms_denied:
+			field_name = "Permissions changed"
+			field_value = "\n"
+
+			different_perms = get_difference(before_perms, after_perms) | get_difference(after_perms, before_perms)
+
+			for perm in different_perms:
+				if after_perms[perm] == True and before_perms[perm] == False:
+					field_value += f"\n:white_check_mark: {perm.capitalize()}"
+
+				elif after_perms[perm] == False and before_perms[perm] == True:
+					field_value += f"\n:x: {perm.capitalize()}"
+
+				else:
+					continue
+			
+			embed.add_field(name = field_name, value = field_value, inline = False)
+
+		# ID Field
+		embed.add_field(
+			name = "ID", 
+			value = f"```ini\nRole = {after.id}\nPerpetrator = {perpetrator.id}```", 
+			inline = False
+		)
+		
+		await self.log_channel.send(embed = embed)
+
 def setup(bot : commands.Bot):
 	bot.add_cog(ModLog(bot))
