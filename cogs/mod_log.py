@@ -1,15 +1,20 @@
+# Nextcord
 import nextcord
 from nextcord.ext import commands
 
+# Helpers
 from helpers.config import *
 from helpers.embed_builder import EmbedBuilder
-from helpers.utils import get_difference
-from helpers import time
+from helpers.utils import get_difference, chunk
+from helpers.time import *
+from helpers.pastebin import paste
 
+# Date Utils
 from datetime import datetime
 from pytz import timezone
 from dateutil.relativedelta import relativedelta
 
+# Typing
 from typing import Union
 
 # Types
@@ -318,7 +323,7 @@ class ModLog(commands.Cog):
 		joined_at = datetime.timestamp(member.joined_at)
 		created_at = datetime.timestamp(member.created_at)
 		difference = abs(relativedelta(now, member.created_at))
-		account_age = time.humanize_delta(difference, precision = "days")
+		account_age = humanize_delta(difference, precision = "days")
 
 		# Embed Fields
 		embed.add_field(name = "User Information", value = f"{member} ({member.id}) {member.mention}", inline = False)
@@ -346,7 +351,7 @@ class ModLog(commands.Cog):
 		joined_at = datetime.timestamp(member.joined_at)
 		created_at = datetime.timestamp(member.created_at)
 		difference = abs(relativedelta(now, member.created_at))
-		account_age = time.humanize_delta(difference, precision = "days")
+		account_age = humanize_delta(difference, precision = "days")
 
 		# Roles
 		if len(member.roles) > 1:
@@ -659,10 +664,86 @@ class ModLog(commands.Cog):
 		
 		# Date & ID Fields
 		embed.add_field(name = "Content", value = message.content, inline = False)
-		embed.add_field(name = "Date", value = f"<t:{round(ts)}:F>")
+		embed.add_field(name = "Date", value = f"<t:{round(ts)}:F>", inline = False)
 		embed.add_field(name = "ID", value = f"```ini\nUser = {message.author.id}\nMessage = {message.id}```", inline = False)
 		
 		await self.log_channel.send(embed = embed)
+	
+	# Message Edit Event
+	@commands.Cog.listener()
+	async def on_message_edit(self, before : nextcord.Message, after : nextcord.Message):
+		"""Log message update event to mod log."""
+		if before.guild.id not in GUILD_IDS: return
+
+		# Embed Builder
+		builder = EmbedBuilder(self.bot)
+
+		# Embed
+		embed = await builder.mod_log_embed(
+			before.author.avatar.url, before.author.color if before.author.color else nextcord.Color.purple(), before.author, f"{before.author} ({before.author.nick}) updated their message in {before.channel.mention}"
+		)
+
+		# Created At Timestamp
+		ts = before.created_at.timestamp()
+
+		# Chunk Content
+		before_content = chunk(before.content, 1024)
+		after_content = chunk(after.content, 1024)
+
+		# Splitting Content
+		if len(before_content) > 1:
+			embed.add_field(name = "Previous", value = f"{before_content[0]}", inline = False)
+			for i in range(1, len(before_content)):
+				embed.add_field(name = "Previous Continued", value = f"{before_content[i]}", inline = False)
+
+		else:
+			embed.add_field(name = "Previous", value = f"{before_content[0]}", inline = False)
+
+		if len(after_content) > 1:
+			embed.add_field(name = "Now", value = f"{after_content[0]}", inline = False)
+			for i in range(1, len(after_content)):
+				embed.add_field(name = "Now Continued", value = f"{after_content[i]}", inline = False)
+
+		else:
+			embed.add_field(name = "Now", value = f"{after_content[0]}", inline = False)		
 		
+		# Embed Fields
+		embed.add_field(
+			name = "Channel", 
+			value = f"{before.channel.mention} ({before.channel.name}) [Go To Message]({after.jump_url})", 
+			inline = False
+		)
+		embed.add_field(name = "Date", value = f"<t:{round(ts)}:F>", inline = False)
+		embed.add_field(
+			name = "ID", 
+			value = f"```ini\nUser = {before.author.id}\nMessage = {before.id}\nChannel = {before.channel.id}```", 
+			inline = False
+		)
+		
+		await self.log_channel.send(embed = embed)
+
+	# Message Delete Bulk Event
+	@commands.Cog.listener()
+	async def on_bulk_message_delete(self, messages : list[nextcord.Message]):
+		"""Log message bulk delete event to mod log."""
+		if messages[0].guild.id not in GUILD_IDS: return # Guild is not in Guild IDs
+		if len(messages) == 0: return # No Messages Were Deleted
+
+		# Embed Builder
+		builder = EmbedBuilder(self.bot)
+
+		# Embed
+		embed = await builder.mod_log_embed(
+			None, nextcord.Color.purple(), None, f"**{len(messages)}** message(s) were deleted."
+		)
+
+		# Create Pastebin Link
+		link = paste("\n".join([str(message.author) + f"({message.author.id}) | " + datetime.now().strftime("%A, %B %d %Y at %I:%M:%S %p %Z:") + message.content for message in messages]), "Message Delete Bulk")
+
+		# Link Embed
+		embed.add_field(name = "Link", value = link, inline = False)
+
+		await self.log_channel.send(embed = embed)
+
 def setup(bot : commands.Bot):
 	bot.add_cog(ModLog(bot))
