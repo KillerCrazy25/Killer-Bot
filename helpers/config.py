@@ -12,6 +12,7 @@ with open("./config.json") as file:
 # Tokens
 TOKEN = os.getenv("TOKEN")
 RIOT_TOKEN = os.getenv("RIOT_TOKEN")
+PASTEBIN_TOKEN = os.getenv("PASTEBIN_TOKEN")
 
 # Version
 VERSION = config["version"]
