@@ -340,3 +340,7 @@ def get_mastery_emoji(mastery : Optional[int]) -> str:
 # Function That Returns The Difference Between Two Dicts
 def get_difference(dict1 : dict, dict2 : dict) -> dict:
 	return {key: dict1[key] for key in dict1 if dict1[key] != dict2[key]}
+
+# Function That Chunks A String If It's Longer Than The Specified Length
+def chunk(string : str, length : int) -> list:
+	return [string[i:i+length] for i in range(0, len(string), length)]
