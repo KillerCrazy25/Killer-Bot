@@ -21,17 +21,6 @@ from typing import Union
 GUILD_CHANNEL = Union[nextcord.CategoryChannel, nextcord.TextChannel, nextcord.VoiceChannel, nextcord.StageChannel]
 USER = Union[nextcord.User, nextcord.Member]
 
-# Constants
-CHANNEL_CHANGES_UNSUPPORTED = ("permissions",)
-CHANNEL_CHANGES_SUPPRESSED = ("_overwrites", "position")
-ROLE_CHANGES_UNSUPPORTED = ("colour", "permissions")
-
-VOICE_STATE_ATTRIBUTES = {
-    "channel.name": "Channel",
-    "self_stream": "Streaming",
-    "self_video": "Broadcasting",
-}
-
 # Mod Log Cog
 class ModLog(commands.Cog):
 
@@ -650,6 +639,7 @@ class ModLog(commands.Cog):
 	async def on_message_delete(self, message : nextcord.Message):
 		"""Log message delete event to mod log."""
 		if message.guild.id not in GUILD_IDS: return
+		if message.author.bot == True: return
 
 		# Embed Builder
 		builder = EmbedBuilder(self.bot)
@@ -674,13 +664,14 @@ class ModLog(commands.Cog):
 	async def on_message_edit(self, before : nextcord.Message, after : nextcord.Message):
 		"""Log message update event to mod log."""
 		if before.guild.id not in GUILD_IDS: return
+		if before.author.bot == True: return
 
 		# Embed Builder
 		builder = EmbedBuilder(self.bot)
 
 		# Embed
 		embed = await builder.mod_log_embed(
-			before.author.avatar.url, before.author.color if before.author.color else nextcord.Color.purple(), before.author, f"{before.author} ({before.author.nick}) updated their message in {before.channel.mention}"
+			before.author.avatar.url, before.author.color if before.author.color else nextcord.Color.purple(), before.author, f"{before.author} ({before.author.nick if before.author.nick else ''}) updated their message in {before.channel.mention}"
 		)
 
 		# Created At Timestamp
@@ -744,6 +735,103 @@ class ModLog(commands.Cog):
 		embed.add_field(name = "Link", value = link, inline = False)
 
 		await self.log_channel.send(embed = embed)
+	
+	# Voice Channel Join Event
+	@commands.Cog.listener()
+	async def on_voice_state_update(self, member : USER, before : nextcord.VoiceState, after : nextcord.VoiceState):
+		"""Log voice channel join event to mod log."""
+		if member.guild.id not in GUILD_IDS: return
+		
+		# Embed Builder
+		builder = EmbedBuilder(self.bot)
 
+		# Join Voice / Stage Channel
+		if before.channel == None and after.channel != None:
+			
+			# Build Embed
+			embed = await builder.mod_log_embed(
+				member.avatar.url, nextcord.Color.purple(), f"{member} ({member.nick if member.nick else ''})", f"**{member}** joined {'voice' if isinstance(after.channel, nextcord.VoiceChannel) else 'stage'} channel: {after.channel.name}"
+			)
+
+			# Embed Fields
+			embed.add_field(name = "Channel", value = f"{after.channel.mention} ({after.channel.name})", inline = False)
+			embed.add_field(name = "ID", value = f"```ini\nUser = {member.id}\nChannel = {after.channel.id}```", inline = False)
+
+			return await self.log_channel.send(embed = embed)
+
+		# Leave Voice / Stage Channel
+		elif before.channel != None and after.channel == None:
+
+			# Build Embed
+			embed = await builder.mod_log_embed(
+				member.avatar.url, nextcord.Color.purple(), f"{member} ({member.nick if member.nick else ''})", f"**{member}** left {'voice' if isinstance(before.channel, nextcord.VoiceChannel) else 'stage'} channel: {before.channel.name}"
+			)
+
+			# Embed Fields
+			embed.add_field(name = "Channel", value = f"{before.channel.mention} ({before.channel.name})", inline = False)
+			embed.add_field(name = "ID", value = f"```ini\nUser = {member.id}\nChannel = {before.channel.id}```", inline = False)
+
+			return await self.log_channel.send(embed = embed)
+
+		# Move Voice / Stage Channel
+		elif before.channel != None and after.channel != None and before.channel != after.channel:
+			
+			# Build Embed
+			embed = await builder.mod_log_embed(
+				member.avatar.url, nextcord.Color.purple(), f"{member} ({member.nick if member.nick else ''})", f"**{member}** moved from {before.channel.mention} ({before.channel.name}) to {after.channel.mention} ({after.channel.name})"
+			)
+
+			# Embed Fields
+			embed.add_field(name = "Current Channel", value = f"{after.channel.mention} ({after.channel.name})", inline = False)
+			embed.add_field(name = "Previous Channel", value = f"{before.channel.mention} ({before.channel.name})", inline = False)
+			embed.add_field(name = "ID", value = f"```ini\nUser = {member.id}\nNew = {after.channel.id}\nOld = {before.channel.id}```", inline = False)
+			
+			return await self.log_channel.send(embed = embed)
+		
+		# Server Mute
+		if before.mute != after.mute:
+			action = "Now server muted" if after.mute else "Now server unmuted"
+
+			async for entry in member.guild.audit_logs(limit = 1, action = nextcord.AuditLogAction.member_update):
+				perpetrator = entry.user
+
+		# Server Deafen
+		if before.deaf != after.deaf:
+			action = "Now server deafened" if after.deaf else "Now server undeafened"
+
+			async for entry in member.guild.audit_logs(limit = 1, action = nextcord.AuditLogAction.member_update):
+				perpetrator = entry.user
+
+		# Mute
+		if before.self_mute != after.self_mute:
+			action = "Now muted" if after.self_mute else "Now unmuted"
+			perpetrator = None
+
+		# Deafen
+		if before.self_deaf != after.self_deaf:
+			action = "Now deafened" if after.self_deaf else "Now undeafened"
+			perpetrator = None
+
+		# Stream
+		if before.self_stream != after.self_stream:
+			action = "Started streaming" if after.self_stream else "Stopped streaming"
+			perpetrator = None
+
+		# Video
+		if before.self_video != after.self_video:
+			action = "Turned on video" if after.self_video else "Turned off video"
+			perpetrator = None
+
+		# Build Embed
+		embed = await builder.mod_log_embed(
+			member.avatar.url, nextcord.Color.purple(), f"{member} ({member.nick if member.nick else ''})", f"**{member}** updated ther voice state"
+		)
+
+		# Embed Fields
+		embed.add_field(name = "Action", value = action, inline = False)
+		embed.add_field(name = "ID", value = f"```ini\nUser = {member.id}\nChannel = {after.channel.id}\n{'Perpetrator = ' + str(perpetrator.id) if perpetrator != None else ''}```", inline = False)
+
+		return await self.log_channel.send(embed = embed)
+		
 def setup(bot : commands.Bot):
 	bot.add_cog(ModLog(bot))
