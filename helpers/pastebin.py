@@ -1,9 +1,7 @@
-import requests, os
-from dotenv import load_dotenv
+import requests
 from helpers.config import PASTEBIN_TOKEN
-
-load_dotenv()
  
+# Function to post to pastebin
 def paste(text : str, title : str):
 	url = "https://pastebin.com/api/api_post.php"
 	payload = {
