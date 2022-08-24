@@ -5,7 +5,7 @@ from nextcord.ext import commands
 # Helpers
 from helpers.config import *
 from helpers.embed_builder import EmbedBuilder
-from helpers.utils import get_difference, chunk
+from helpers.utils import get_difference, get_difference_list, chunk
 from helpers.time import *
 from helpers.pastebin import paste
 
@@ -15,11 +15,63 @@ from pytz import timezone
 from dateutil.relativedelta import relativedelta
 
 # Typing
-from typing import Union
+from typing import Any, Union
 
 # Types
 GUILD_CHANNEL = Union[nextcord.CategoryChannel, nextcord.TextChannel, nextcord.VoiceChannel, nextcord.StageChannel]
 USER = Union[nextcord.User, nextcord.Member]
+
+# Constants
+VERIFICATION_LEVELS = {
+	0 : "Unrestricted",
+	1 : "Low - Must have a verified email",
+	2 : "Medium - Must be registered for 5 minutes",
+	3 : "High - 10 minutes of membership required",
+	4 : "Highest - Verified phone required"
+}
+
+EXPLICIT_CONTENT_LEVELS = {
+	0 : "No Scanning Enabled",
+	1 : "Scanning content from members without a role",
+	2 : "Scanning content from all members"
+}
+
+DEFAULT_NOTIFICATION_LEVELS = {
+	0 : "All Notifications",
+	1 : "Only Mentions"
+}
+
+MFA_LEVELS = {
+	0 : "Disabled",
+	1 : "Enabled"
+}
+
+REGIONS = {
+	"us-east": "US East",
+	"us-west": "US West",
+	"us-south": "US South",
+	"us-central": "US Central",
+	"eu-west": "EU West",
+	"eu-central": "EU Central",
+	"singapore": "Singapore",
+	"london": "London",
+	"sydney": "Sydney",
+	"amsterdam": "Amsterdam",
+	"frankfurt": "Frankfurt",
+	"brazil": "Brazil",
+	"hongkong": "Hong Kong",
+	"russia": "Russia",
+	"japan": "Japan",
+	"southafrica": "South Africa",
+	"south-korea": "South Korea",
+	"india": "India",
+	"europe": "Europe",
+	"dubai": "Dubai",
+	"vip-us-east": "VIP US East",
+	"vip-us-west": "VIP US West",
+	"vip-amsterdam": "VIP Amsterdam"
+}
+
 
 # Mod Log Cog
 class ModLog(commands.Cog):
@@ -27,6 +79,160 @@ class ModLog(commands.Cog):
 	# Mod Log Constructor
 	def __init__(self, bot : commands.Bot):
 		self.bot = bot
+
+	# Handle Function
+	async def handle_property(self, key : str, before : nextcord.Guild, after : nextcord.Guild) -> tuple:
+		# Avoid errors
+		name = "None"
+		value = "None"
+
+		print(f"Key: {key}")
+
+		# Check name of the key
+		match key:
+
+			# AFK Channel
+			case "afk_channel":
+				name = "AFK Channel"
+				if before.afk_channel != after.afk_channel:
+					value = f"Was: **{before.afk_channel.name if before.afk_channel != None else 'None'}**\nNow: **{after.afk_channel.name if after.afk_channel != None else 'None'}**"
+
+				return name, value
+
+			# AFK Timeout
+			case "afk_timeout":
+				name = "AFK Timeout"
+				if before.afk_timeout != after.afk_timeout:			
+					value = f"Was: **{int(before.afk_timeout / 60)}** minute{'s' if int(before.afk_timeout) / 60 > 1 else ''}\nNow: **{int(after.afk_timeout / 60)}** minute{'s' if int(after.afk_timeout) / 60 > 1 else ''}"
+
+				return name, value
+
+			# Default Notification Level
+			case "default_notifications":
+				name = "Default Notifications"
+				if before.default_notifications != after.default_notifications:		
+					value = f"Was: **{DEFAULT_NOTIFICATION_LEVELS[before.default_notifications.value]}**\nNow: **{DEFAULT_NOTIFICATION_LEVELS[after.default_notifications.value]}**"
+
+				return name, value
+
+			# Description
+			case "description":
+				name = "Description"
+				if before.description != after.description:		
+					value = f"Was: **{before.description if before.description else 'No description'}**\nNow: **{after.description if after.description != None else 'No description'}**"
+
+				return name, value
+
+			# Explicit Content Filter
+			case "explicit_content_filter":
+				name = "Explicit Content Filter"
+				if before.explicit_content_filter != after.explicit_content_filter:
+					value = f"Was: **{EXPLICIT_CONTENT_LEVELS[before.explicit_content_filter.value]}**\nNow: **{EXPLICIT_CONTENT_LEVELS[after.explicit_content_filter.value]}**"
+
+				return name, value
+
+			# Features
+			case "features":
+				name = "Features"
+				if before.features != after.features:
+					value = ""
+
+					different_features = get_difference_list(before.features, after.features) + get_difference_list(after.features, before.features)
+
+					for feature in different_features:
+						if feature not in before.features and feature in after.features:
+							value += f"\n:white_check_mark: {feature.capitalize()}"
+						
+						elif feature not in after.features and feature in before.features:
+							value += f"\n:x: {feature.capitalize()}"
+
+						else:
+							continue
+					
+					return name, value
+
+			# Icon
+			case "icon":
+				name = "Icon"
+				if before.icon != after.icon:
+					value = f"Was: Not Avaliable\nNow: [URL]({after.icon.url})"
+
+				return name, value
+
+			# MFA Level
+			case "mfa_level":
+				name = "MFA Level"
+				if before.mfa_level != after.mfa_level:
+					value = f"Was: **{MFA_LEVELS[before.mfa_level.value]}**\nNow: **{MFA_LEVELS[after.mfa_level.value]}**"
+
+				return name, value
+
+			# Name
+			case "name":
+				name = "Name"
+				if before.name != after.name:
+					value = f"Was: **{before.name}**\nNow: **{after.name}**"
+
+				return name, value
+
+			# Preferred Locale
+			case "preferred_locale":
+				name = "Preferred Locale"
+				if before.preferred_locale != after.preferred_locale:
+					value = f"Was: **{before.preferred_locale}**\nNow: **{after.preferred_locale}**"
+
+				return name, value
+
+			# Public Updates Channel
+			case "public_updates_channel":
+				name = "Public Updates Channel"
+				if before.public_updates_channel != after.public_updates_channel:
+					value = f"Was: **{before.public_updates_channel.name if before.public_updates_channel != None else 'None'}**\nNow: **{after.public_updates_channel.name if after.public_updates_channel != None else 'None'}**"
+
+				return name, value
+
+			# Region
+			case "region":
+				name = "Region"
+				if before.region != after.region:
+					value = f"Was: **{REGIONS[before.region.value] if before.region.value else 'Unknown'}**\nNow: **{REGIONS[after.region.value] if after.region.value else 'Unknown'}**"
+
+				return name, value
+
+			# Rules Channel
+			case "rules_channel":
+				name = "Rules Channel"
+				if before.rules_channel != after.rules_channel:
+					value = f"Was: **{before.rules_channel.name if before.rules_channel != None else 'None'}**\nNow: **{after.rules_channel.name if after.rules_channel != None else 'None'}**"
+
+				return name, value
+
+			# Splash
+			case "splash":
+				name = "Splash"
+				if before.splash != after.splash:
+					value = f"Was: Not Avaliable\nNow: [URL]({after.splash.url})"
+
+				return name, value
+
+			# System Channel
+			case "system_channel":
+				name = "System Channel"
+				if before.system_channel != after.system_channel:
+					value = f"Was: **{before.system_channel.name if before.system_channel != None else 'None'}**\nNow: **{after.system_channel.name if after.system_channel != None else 'None'}**"
+
+				return name, value
+
+			# Verification Level
+			case "verification_level":
+				name = "Verification Level"
+				if before.verification_level != after.verification_level:
+					value = f"Was: **{VERIFICATION_LEVELS[before.verification_level.value]}**\nNow: **{VERIFICATION_LEVELS[after.verification_level.value]}**"
+
+				return name, value
+
+			case _:
+				return name, value
 
 	# Mod Log On Ready
 	@commands.Cog.listener()
@@ -634,6 +840,93 @@ class ModLog(commands.Cog):
 		
 		await self.log_channel.send(embed = embed)
 
+	# Guild Update Event
+	@commands.Cog.listener()
+	async def on_guild_update(self, before : nextcord.Guild, after : nextcord.Guild):
+		"""Log guild update event to mod log."""
+		if before.id not in GUILD_IDS: return
+
+		# Embed Builder
+		builder = EmbedBuilder(self.bot)
+
+		# Get Author Of Update
+		async for entry in after.audit_logs(limit = 1, action = nextcord.AuditLogAction.guild_update):
+			perpetrator = entry.user
+
+		# Build Embed
+		embed = await builder.mod_log_embed(
+			perpetrator.avatar.url, nextcord.Color.gold(), perpetrator, f"The guild was updated"
+		)
+
+		# Before Properties
+		before_properties = {
+			"afk_channel": before.afk_channel, # name
+			"afk_timeout": before.afk_timeout, # str
+			"default_notifications": before.default_notifications, # value
+			"description": before.description, # str
+			"explicit_content_filter": before.explicit_content_filter, # value
+			"features": before.features, # for loop
+			"icon": before.icon, # url
+			"mfa_level": before.mfa_level, # value
+			"name": before.name, # str
+			"preferred_locale": before.preferred_locale, # str
+			"public_updates_channel": before.public_updates_channel, # name
+			"region": before.region, # value 
+			"rules_channel": before.rules_channel, # name
+			"splash": before.splash, # url
+			"system_channel": before.system_channel,	# name
+			"verification_level": before.verification_level, # value
+		}
+
+		# After Properties
+		after_properties = {
+			"afk_channel": after.afk_channel, # name - no
+			"afk_timeout": after.afk_timeout, # str - si
+			"default_notifications": after.default_notifications, # value - si
+			"description": after.description, # str - masomenos
+			"explicit_content_filter": after.explicit_content_filter, # value -
+			"features": after.features, # for loop - si
+			"icon": after.icon, # url - si
+			"mfa_level": after.mfa_level, # value - no
+			"name": after.name, # str - si
+			"preferred_locale": after.preferred_locale, # str - no
+			"public_updates_channel": after.public_updates_channel, # name - no
+			"region": after.region.value, # value -
+			"rules_channel": after.rules_channel, # name -
+			"splash": after.splash, # url -
+			"system_channel": after.system_channel, # name -
+			"verification_level": after.verification_level, # value -
+		}
+
+		if before_properties == after_properties: return # If properties are the same, return.
+
+		# --------------------------------------------------------------
+		# 							Embed Fields					   #
+		# --------------------------------------------------------------
+		for property in before_properties.keys():
+			if property != "features" and property != "region":
+				if before_properties[property] != after_properties[property]:	
+					data = await self.handle_property(property, before, after) 
+
+					if data == None: continue 
+					
+					print("Name: " + data[0])
+					print("Value: " + data[1])
+
+					print(f"BEFORE PROPERTY: {before_properties[property]}")
+					print(f"AFTER PROPERTY: {after_properties[property]}")
+
+					embed.add_field(name = data[0] if data[0] else 'Unknown', value = data[1] if data[1] else 'Unknown', inline = False)
+
+		# ID Field
+		embed.add_field(
+			name = "ID",
+			value = f"```ini\nGuild = {perpetrator.guild.id}\nPerpetrator = {perpetrator.id}```",
+			inline = False
+		)
+
+		await self.log_channel.send(embed = embed)
+
 	# Message Delete Event
 	@commands.Cog.listener()
 	async def on_message_delete(self, message : nextcord.Message):
@@ -831,7 +1124,7 @@ class ModLog(commands.Cog):
 		embed.add_field(name = "Action", value = action, inline = False)
 		embed.add_field(name = "ID", value = f"```ini\nUser = {member.id}\nChannel = {after.channel.id}\n{'Perpetrator = ' + str(perpetrator.id) if perpetrator != None else ''}```", inline = False)
 
-		return await self.log_channel.send(embed = embed)
-		
+		return await self.log_channel.send(embed = embed)			
+
 def setup(bot : commands.Bot):
 	bot.add_cog(ModLog(bot))
