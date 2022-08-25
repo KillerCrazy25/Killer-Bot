@@ -15,7 +15,7 @@ from pytz import timezone
 from dateutil.relativedelta import relativedelta
 
 # Typing
-from typing import Any, Union
+from typing import Union
 
 # Types
 GUILD_CHANNEL = Union[nextcord.CategoryChannel, nextcord.TextChannel, nextcord.VoiceChannel, nextcord.StageChannel]
