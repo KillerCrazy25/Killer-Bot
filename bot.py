@@ -1,7 +1,8 @@
 import nextcord, os, asyncio
 from nextcord.ext import commands, tasks
 
-from helpers.config import DEBUG_CHANNEL_ID, DEVELOPER_ID, MAIN_GUILD_ID, PREFIX, TESTING_GUILD_ID, TOKEN
+from helpers.config import DEBUG_CHANNEL_ID, DEVELOPER_ID, MAIN_GUILD_ID, PREFIX, TESTING_GUILD_ID, TOKEN, VERSION
+from helpers.embed_builder import EmbedBuilder
 
 from datetime import datetime
 from pytz import timezone
@@ -12,28 +13,51 @@ bot = commands.Bot(command_prefix = commands.when_mentioned_or(PREFIX), intents 
 @bot.event
 async def on_ready():
 	print(f"Bot is ready as {bot.user}")
-
-	# if DEBUG_CHANNEL_ID:
-	# 	debug_channel = bot.get_channel(DEBUG_CHANNEL_ID)
-
-	# 	now = datetime.now(tz = timezone('US/Eastern'))
-	# 	timestamp = datetime.timestamp(now)
-
-	# 	embed = nextcord.Embed(
-	# 		color = nextcord.Color.og_blurple()		
-	# 	)
-
-	# 	embed.set_author(name = "I'm ready!", icon_url = bot.user.avatar.url)
-
-	# 	embed.add_field(name = "Bot Information", value = f"- User: `{bot.user}`\n- ID: `{bot.user.id}`\n- Prefix: `{PREFIX}`", inline = False)
-	# 	embed.add_field(name = "Launch Information", value = f"- Debug Mode: **True**\n- Debug Channel: {debug_channel.mention}\n- Launched at: <t:{timestamp:.0f}>\n- Debug Guild IDs: `{MAIN_GUILD_ID}, {DEBUG_CHANNEL_ID}`", inline = False)
-
-	# 	await debug_channel.send(embed = embed)
-
-	# else:
-	# 	print("DEBUG CHANNEL ID NOT FOUND. DEBUG MODE DISABLED.")
-
 	await change_presence_task.start()
+
+# Global Message Command
+@bot.command()
+async def globalmsg(ctx : commands.Context, *, message : str):
+	if ctx.author.id != DEVELOPER_ID:
+		return await ctx.send("You do not have permission to use this command.")
+
+	success = 0
+	failed = 0
+	owner_success = 0
+	owner_failed = 0
+
+	for guild in bot.guilds:
+		system_channel = guild.system_channel
+		if system_channel:
+			await system_channel.send(message)
+			success += 1
+		else:
+			print(f"System channel not found for guild {guild.name} ({guild.id}). Trying to send message to server owner...")
+			owner = guild.owner
+			failed += 1
+			try:
+				await owner.send(message)
+				owner_success += 1
+			except Exception as e:
+				print(f"Failed to send message to server owner of guild {guild.name} ({guild.id}): {e}")
+				owner_failed += 1
+
+	await ctx.send(f"Sent message to {success} guilds with success!\nFailed to send message to {failed} guilds.\nSent message to {owner_success} guilds with success to server owners!\nFailed to send message to {owner_failed} guilds to server owners.")
+
+# Guild Join Event
+@bot.event
+async def on_guild_join(guild : nextcord.Guild):
+	
+	print(f"Joined guild {guild.name} ({guild.id}).")
+	builder = EmbedBuilder(bot)
+
+	embed = await builder.guild_join_embed()
+
+	system_channel = guild.system_channel
+	if system_channel:
+		await system_channel.send(embed = embed)
+	else:
+		print(f"System channel not found for guild {guild.name} ({guild.id}).")
 
 # Change Presence Task
 @tasks.loop(seconds = 10)
