@@ -1,4 +1,4 @@
-import requests, math
+import requests
 
 from typing import Optional, Dict, Any
 from bs4 import BeautifulSoup
