@@ -41,7 +41,7 @@ class EmbedBuilder:
 		description: str,
 		thumbnail: Optional[Union[str, nextcord.Asset]] = None,
 		timestamp: Optional[datetime] = None,
-		footer: Optional[str] = None,
+		footer: Optional[str] = None
 	) -> nextcord.Embed:
 		"""Returns a mod log embed."""
 		embed = nextcord.Embed(
@@ -59,5 +59,22 @@ class EmbedBuilder:
 
 		if thumbnail:
 			embed.set_thumbnail(url = thumbnail)
+
+		return embed
+
+	# Guild Join Embed Builder
+	async def guild_join_embed(self) -> nextcord.Embed:
+		embed = nextcord.Embed(
+			description = "Thanks for adding me to your server!",
+			color = nextcord.Color.dark_purple(),
+			timestamp = datetime.now(tz = timezone("US/Eastern"))
+		)
+		embed.set_author(name = self.bot.user, icon_url = self.bot.user.avatar.url)
+
+		embed.add_field(name = "Basic Information", value = f"- Default Prefix: `{PREFIX}`\n- Developer: <@{DEVELOPER_ID}>\n- Bot Version: `{VERSION}`\n\n**IMPORTANT: Remember that the bot is under development and it's not recommended to be used in public servers.**", inline = False)
+		embed.add_field(name = "Commands", value = f"You can find all of my commands by using `{PREFIX}help`", inline = False)
+		embed.add_field(name = "Links", value = "[Source Code](https://github.com/KillerCrazy25/Killer-Bot/)\n[Invite](https://discord.com/api/oauth2/authorize?client_id=945158875722702878&permissions=8&scope=bot%20applications.commands)\n[Support Server](https://discord.gg/3WkeV2tNas)", inline = False)
+
+		embed.set_footer(text = f"{self.bot.user.name} v{VERSION} | Guilds: {len(self.bot.guilds)}", icon_url = self.bot.user.avatar.url)
 
 		return embed
