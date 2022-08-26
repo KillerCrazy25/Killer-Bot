@@ -1,7 +1,12 @@
+from asyncio.log import logger
 import requests
 
 from typing import Optional, Dict, Any
 from bs4 import BeautifulSoup
+
+from helpers.logger import Logger
+
+logger = Logger()
 
 # Function That Gets Champion Analytics Via WebScraping U.GG Website
 def get_champion_analytics(champion : str = "annie", region : str = "NA", elo : str = "platinum_plus"):
@@ -10,52 +15,75 @@ def get_champion_analytics(champion : str = "annie", region : str = "NA", elo : 
 
 	if region == "world" and elo == "platinum_plus":
 		url = f"https://u.gg/lol/champions/{champion}/build"
-		print(f"Sending request to {url}")
-		r = requests.get(url = url)
+		logger.info(f"Sending request to {url}")
+		headers = {
+		'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.77 Safari/537.36'
+		}
+		r = requests.get(url = url, headers = headers)
 
-		soup = BeautifulSoup(r.content, "html.parser")
+		soup = BeautifulSoup(r.text, "html.parser")
 
-		stats_div = soup.find('div', class_ = 'additional-stats-container')
-		stats_ = stats_div.find_all('div', class_ = 'value')
+		stats_div = soup.find("div", {"class" : "content-section champion-ranking-stats-normal"})
+		logger.debug(stats_div)
+		stats_ = stats_div.find_all('div', {"class" : "value"})
+		logger.debug(stats_)
 
 		stats = []
 
 		for stat in stats_:
 			stats.append(stat.text)
+
+		logger.debug(stats)
 
 		return stats
 
 	elif region == "world" and elo != "platinum_plus":
 		url = f"https://u.gg/lol/champions/{champion}/build?rank={elo}"
-		print(f"Sending request to {url}")
-		r = requests.get(url = url)
+		logger.info(f"Sending request to {url}")
+		headers = {
+		'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.77 Safari/537.36'
+		}
+		r = requests.get(url = url, headers = headers)
 
-		soup = BeautifulSoup(r.content, "html.parser")
+		soup = BeautifulSoup(r.text, "html.parser")
 
-		stats_div = soup.find('div', class_ = 'additional-stats-container')
-		stats_ = stats_div.find_all('div', class_ = 'value')
+		stats_div = soup.find("div", {"class" : "content-section champion-ranking-stats-normal"})
+		logger.debug(stats_div)
+		stats_ = stats_div.find_all('div', {"class" : "value"})
+		logger.debug(stats_)
 
 		stats = []
 
 		for stat in stats_:
 			stats.append(stat.text)
+
+		logger.debug(stats)
 
 		return stats
 
 	elif region != "world" and elo != "platinum_plus":
 		url = f"https://u.gg/lol/champions/{champion}/build?rank={elo}&region={region}"
-		print(f"Sending request to {url}")
-		r = requests.get(url = url)
+		logger.info(f"Sending request to {url}")
+		headers = {
+		'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.77 Safari/537.36'
+		}
+		r = requests.get(url = url, headers = headers)
 
-		soup = BeautifulSoup(r.content, "html.parser")
+		soup = BeautifulSoup(r.text, "html.parser")
 
-		stats_div = soup.find('div', class_ = 'additional-stats-container')
-		stats_ = stats_div.find_all('div', class_ = 'value')
+		logger.debug(soup)
+		logger.debug(stats_)
+		logger.debug(stats_div)
+
+		stats_div = soup.find("div", {"class" : "content-section champion-ranking-stats-normal"})
+		stats_ = stats_div.find_all('div', {"class" : "value"})
 
 		stats = []
 
 		for stat in stats_:
 			stats.append(stat.text)
+
+		logger.debug(stats)
 
 		return stats
 
