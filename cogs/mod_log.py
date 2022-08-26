@@ -8,6 +8,7 @@ from helpers.embed_builder import EmbedBuilder
 from helpers.utils import get_difference, get_difference_list, chunk
 from helpers.time import *
 from helpers.pastebin import paste
+from helpers.logger import Logger
 
 # Date Utils
 from datetime import datetime
@@ -16,6 +17,9 @@ from dateutil.relativedelta import relativedelta
 
 # Typing
 from typing import Union
+
+# Logger
+logger = Logger()
 
 # Types
 GUILD_CHANNEL = Union[nextcord.CategoryChannel, nextcord.TextChannel, nextcord.VoiceChannel, nextcord.StageChannel]
@@ -79,6 +83,8 @@ class ModLog(commands.Cog):
 	# Mod Log Constructor
 	def __init__(self, bot : commands.Bot):
 		self.bot = bot
+		self.log_channel = self.bot.get_channel(LOGS_CHANNEL_ID)
+		logger.info(f"[Mod Log] Log channel setted.")
 
 	# Handle Function
 	async def handle_property(self, key : str, before : nextcord.Guild, after : nextcord.Guild) -> tuple:
@@ -238,11 +244,9 @@ class ModLog(commands.Cog):
 	@commands.Cog.listener()
 	async def on_ready(self):
 		# Check if the mod log channel is set
-		if LOGS_CHANNEL_ID:
+		if not self.log_channel:
 			self.log_channel = self.bot.get_channel(LOGS_CHANNEL_ID)
-		else:
-			self.log_channel = None
-			print("Log channel not found. Please set 'logs_channel_id' in config.json. LOGS ARE NOT GONNA WORK.")
+			logger.info(f"[Mod Log] Log channel setted.")
 
 	# Channel Create Event
 	@commands.Cog.listener()

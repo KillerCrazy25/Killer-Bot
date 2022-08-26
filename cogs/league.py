@@ -1,4 +1,5 @@
-import nextcord, cassiopeia as cass, os, random, matplotlib.pyplot as plt, pandas as pd, numpy as np, matplotlib.table
+from email.policy import default
+import nextcord, cassiopeia as cass, os, random, matplotlib.pyplot as plt, pandas as pd, numpy as np
 
 from cassiopeia import *
 
@@ -6,6 +7,7 @@ from nextcord.ext import commands
 
 from helpers.utils import *
 from helpers.config import MAIN_GUILD_ID, TESTING_GUILD_ID, CASSIOPEIA_CONFIG, RIOT_TOKEN
+from helpers.logger import Logger
 
 from datetime import datetime
 from pytz import timezone
@@ -15,6 +17,8 @@ from pandas.plotting import table
 cass.set_riot_api_key(RIOT_TOKEN)
 cass.apply_settings(CASSIOPEIA_CONFIG)
 
+logger = Logger()
+
 # League Cog
 class LeagueCommands(commands.Cog):
 
@@ -23,16 +27,35 @@ class LeagueCommands(commands.Cog):
 		self.bot = bot
 
 	# Profile Command
-	@commands.command(description = "Profile command.")
-	async def profile(self, ctx: commands.Context, user : str = "Josedeodo", region : str = "NA"):
+	@nextcord.slash_command(
+		name = "profile", 
+		description = "Profile command.",
+		guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID]
+	)
+	async def profile(
+		self, 
+		interaction : nextcord.Interaction, 
+		user : str = nextcord.SlashOption(
+			name = "user",
+			description = "The user to get the profile of.",
+			required = False,
+			default = "Josedeodo"
+		), 
+		region : str = nextcord.SlashOption(
+			name = "region",
+			description = "The region to get the profile of.",
+			required = False,
+			default = "NA"
+		)
+	):
 
-		await ctx.defer()
+		await interaction.response.defer()
 
 		summoner = Summoner(name = user, region = region)
 
 		embed = nextcord.Embed(
 			description = f"{user}'s Profile | Level {summoner.level}",
-			color = nextcord.Color.nitro_pink(),
+			color = nextcord.Color.purple(),
 			timestamp = datetime.now(tz = timezone("US/Eastern"))	
 		)
 
@@ -91,7 +114,7 @@ class LeagueCommands(commands.Cog):
 			points = human_format(cm.points)
 			counter += 1
 			if counter <= 5:
-				champions = champions + f"{mastery_emoji} {cm.champion.name} - **{str(points)}**\n"
+				champions += f"{mastery_emoji} {cm.champion.name} - **{str(points)}**\n"
 			else:
 				break
 
@@ -112,7 +135,7 @@ class LeagueCommands(commands.Cog):
 		plt.xlabel = "Champions"
 		plt.ylabel = "Mastery Points"
 
-		plt.savefig(f"{user}.png")
+		plt.savefig(f"{user.replace(' ', '')}.png")
 
 		plt.close()
 
@@ -120,22 +143,50 @@ class LeagueCommands(commands.Cog):
 		embed.add_field(name = "Mastery Stats", value = f"{len(m7)}x <:mastery7:993688390723715172> {len(m6)}x <:mastery6:993688366317043772> {len(m5)}x <:mastery5:993688341063159860>\nTotal Mastery Points: {total_points}", inline = True)
 	
 		embed.set_author(name = "Killer Bot | League Of Legends Profile", icon_url = self.bot.user.avatar.url)
-		embed.set_footer(text = f"Requested by {ctx.author}", icon_url = ctx.author.avatar.url)
+		embed.set_footer(text = f"Requested by {interaction.user}", icon_url = interaction.user.avatar.url)
 		embed.set_thumbnail(url = summoner.profile_icon.url)
 
-		file_ = nextcord.File(f"{user}.png")
-		embed.set_image(url = f"attachment://{user}.png")
+		file_ = nextcord.File(f"{user.replace(' ', '')}.png")
+		embed.set_image(url = f"attachment://{user.replace(' ', '')}.png")
 
-		await ctx.send(embed = embed, file = file_)
+		await interaction.send(embed = embed, file = file_)
 
 		try:
-			os.remove(f"{user}.png")	
+			os.remove(f"{user.replace(' ', '')}.png")
 		except:
-			print(f"{user}.png was not found on local files.")
+			print(f"{user.replace(' ', '')}.png was not found on local files.")
 
 	# Champ Command
-	@commands.command(description = "Show champion analytics by U.GG")
-	async def champ(self, ctx: commands.Context, champion : str = "Annie", region : str = "world", elo : str = "all"):
+	@nextcord.slash_command(
+		name = "champ", 
+		description = "Show champion analytics by U.GG",
+		guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID]
+	)
+	async def champ(
+		self, 
+		interaction : nextcord.Interaction, 
+		champion : str = nextcord.SlashOption(
+			name = "champion",
+			description = "Champion name",
+			required = True,
+			default = "Aatrox"
+		), 
+		region : str = nextcord.SlashOption(
+			name = "region",
+			description = "Region",
+			required = True,
+			default = "world"
+		), 
+		elo : str = nextcord.SlashOption(
+			name = "elo",
+			description = "Elo",
+			required = True,
+			default = "all"
+		)
+	):
+
+		await interaction.response.defer()
+
 		champ = Champion(name = champion, region = "NA")
 
 		search_elo = from_normal_to_gg(elo)
@@ -160,15 +211,19 @@ class LeagueCommands(commands.Cog):
 	
 		embed.add_field(name = "Champion Analytics (U.GG)", value = f"Tier: {tier}\nWin Rate: {win_rate}\nRanking: {ranking}\nPick Rate: {pick_rate}\nBan Rate: {ban_rate}\nMatches: {matches}", inline = False)
 		embed.set_author(name = "Killer Bot | League Of Legends Champion Analytics", icon_url = self.bot.user.avatar.url)
-		embed.set_footer(text = f"Requested by {ctx.author}", icon_url = ctx.author.avatar.url)
+		embed.set_footer(text = f"Requested by {interaction.user}", icon_url = interaction.user.avatar.url)
 
 		embed.set_thumbnail(url = champ.image.url)
 
-		await ctx.send(embed = embed)
+		await interaction.send(embed = embed)
 
 	# RandomChamp Command
-	@commands.command(description = "Choose a random champion.")
-	async def randomchamp(self, ctx : commands.Context):
+	@nextcord.slash_command(
+		name = "randomchamp", 
+		description = "Choose a random champion.",
+		guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID]
+	)
+	async def randomchamp(self, interaction : nextcord.Interaction):
 		champs = cass.get_champions(region = "NA")
 		
 		champ = random.choice(champs)
@@ -181,13 +236,38 @@ class LeagueCommands(commands.Cog):
 
 		embed.set_image(url = champ.image.url)
 		embed.set_author(name = "Killer Bot | League Of Legends Champion Randomizer", icon_url = self.bot.user.avatar.url)
-		embed.set_footer(text = f"Requested by {ctx.author}", icon_url = ctx.author.avatar.url)
+		embed.set_footer(text = f"Requested by {interaction.user}", icon_url = interaction.user.avatar.url)
 
-		await ctx.send(embed = embed)
+		await interaction.send(embed = embed)
 
 	# Tierlist Command
-	@commands.command(description = "Show champion tierlist by OP.GG")
-	async def tierlist(self, ctx : commands.Context, region : str = "NA", elo : str = "platinum+", role : str = "top"):
+	@nextcord.slash_command(
+		name = "tierlist", 
+		description = "Show champion tierlist by OP.GG", 
+		guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID]
+	)
+	async def tierlist(
+		self, 
+		interaction : nextcord.Interaction, 
+		region : str = nextcord.SlashOption(
+			name = "region",
+			description = "Region",
+			required = True,
+			default = "NA"
+		), 
+		elo : str = nextcord.SlashOption(
+			name = "elo",
+			description = "Elo",
+			required = True,
+			default = "platinum+"
+		), 
+		role : str = nextcord.SlashOption(
+			name = "role",
+			description = "Role",
+			required = True,
+			default = "top"
+		)
+	):
 		embed = nextcord.Embed(
 			title = "Champion Tierlist",
 			description = f"Data provided by OP.GG",
@@ -230,40 +310,14 @@ class LeagueCommands(commands.Cog):
 
 		embed.set_image(url = "attachment://tierlist.png")
 		embed.set_author(name = "Killer Bot | League Of Legends Champion Tierlist", icon_url = self.bot.user.avatar.url)
-		embed.set_footer(text = f"Requested by {ctx.author}", icon_url = ctx.author.avatar.url)
+		embed.set_footer(text = f"Requested by {interaction.user}", icon_url = interaction.user.avatar.url)
 
-		await ctx.send(embed = embed, file = file_)
+		await interaction.send(embed = embed, file = file_)
 
 		try:
 			os.remove(f"tierlist.png")	
 		except:
 			print(f"tierlist.png was not found on local files.")
-
-	# # Tierlist Command Using Embed Instead Of Dataframe
-	# @commands.command(description = "Show champion tierlist by OP.GG")
-	# async def tierlist(self, ctx : commands.Context, region : str = "NA", elo : str = "platinum+", role : str = "top"):
-	# 	embed = nextcord.Embed(
-	# 		title = "Champion Tierlist",
-	# 		description = f"Data provided by OP.GG",
-	# 		color = nextcord.Color.random(),
-	# 		timestamp = datetime.now(tz = timezone("US/Eastern"))	
-	# 	)
-
-	# 	tierlist = get_tierlist(region = region, tier = elo, position = role)
-
-	# 	tierlist["tier"].sort()
-
-	# 	embed.add_field(name = "Position", value = f"\n".join(tierlist['tier']), inline = True) 
-	# 	embed.add_field(name = "Champion", value = f"\n".join(tierlist['champion']), inline = True) 
-	# 	embed.add_field(name = "Tier", value = f"\n".join(tierlist['level']), inline = True) 
-	# 	embed.add_field(name = "Win Rate", value = f"\n".join(tierlist['winrate']), inline = True) 
-	# 	embed.add_field(name = "Pick Rate", value = f"\n".join(tierlist['pickrate']), inline = True) 
-	# 	embed.add_field(name = "Ban Rate", value = f"\n".join(tierlist['banrate']), inline = True) 
-
-	# 	embed.set_author(name = "Killer Bot | League Of Legends Champion Tierlist", icon_url = self.bot.user.avatar.url)
-	# 	embed.set_footer(text = f"Requested by {ctx.author}", icon_url = ctx.author.avatar.url)
-
-	# 	await ctx.send(embed = embed)
 
 def setup(bot):
 	bot.add_cog(LeagueCommands(bot))
