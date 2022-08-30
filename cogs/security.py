@@ -1,5 +1,4 @@
-import base64
-import nextcord, re
+import nextcord, re, base64
 from nextcord.ext import commands
 
 from typing import (
