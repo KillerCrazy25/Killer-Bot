@@ -1,11 +1,15 @@
+from traceback import print_exception
 import nextcord, os
 from nextcord.ext import commands
 
 from datetime import datetime
 from pytz import timezone
-from helpers.embed_builder import EmbedBuilder
 
+from helpers.embed_builder import EmbedBuilder
 from helpers.config import ERROR_CHANNEL_ID, MAIN_GUILD_ID, TESTING_GUILD_ID, DEVELOPER_ID
+from helpers.logger import Logger
+
+logger = Logger()
 
 # Error Handler Cog
 class ErrorHandler(commands.Cog):
@@ -141,6 +145,21 @@ class ErrorHandler(commands.Cog):
 			os.remove(f"{error_id}.txt")
 
 			return await ctx.send(embed = embed)
+
+	@commands.Cog.listener()
+	async def on_application_command_error(self, interaction : nextcord.Interaction, error : nextcord.DiscordException):
+		
+		# Embed Builder
+		builder = EmbedBuilder(self.bot)
+
+		# Command Not Found Error
+		if isinstance(error, commands.CommandNotFound):
+			logger.warning(f"Command not found: {interaction.command}")
+			return
+
+		logger.error(f"{error}")
+
+		return await interaction.send(embed = await builder.error_embed())
 
 def setup(bot):
 	bot.add_cog(ErrorHandler(bot))
