@@ -57,8 +57,11 @@ def get_team_bans(team_info : List) -> List[Champion]:
 	info = team_info[0]["bans"]
 	bans = []
 	for ban in info:
-		champion = Champion(id = ban["championId"], region = "NA")
-		bans.append(champion)
+		if ban["championId"] != -1:
+			champion = Champion(id = ban["championId"], region = "NA")
+			bans.append(champion)
+		else:
+			bans.append(None)
 
 	return bans
 
@@ -155,8 +158,8 @@ def get_team_players(team) -> List[Summoner]:
 
 def get_team_champions(team) -> List[Champion]:
 	"""Get champions of a team."""
-	champions = list(map(lambda p: p['championName'], team))
-	champions = [Champion(name = champion, region = "NA") for champion in champions]
+	champions = list(map(lambda p: p['championId'], team))
+	champions = [Champion(id = champion, region = "NA") for champion in champions]
 
 	return champions
 
@@ -179,12 +182,33 @@ def get_match_map(match_id : int, region : str) -> str:
 
 	return map_
 
-def get_champion_emoji(champion_name : str) -> str:
-	"""Get emoji of a champion."""
+def get_champion_emoji_by_name(champion_name : str) -> str:
+	"""Get emoji of a champion by his name."""
 	try:
-		return CHAMPION_EMOJIS[champion_name]
+		return CHAMPION_EMOJIS_BY_NAME[champion_name]
 	except KeyError:
-		return CHAMPION_EMOJIS["unknown"]
+		return CHAMPION_EMOJIS_BY_NAME["unknown"]
+
+def get_champion_emoji_by_id(champion_id : str) -> str:
+	"""Get emoji of a champion by his ID."""
+	try:
+		return CHAMPION_EMOJIS_BY_ID[champion_id]
+	except KeyError:
+		return CHAMPION_EMOJIS_BY_ID["unknown"]
+
+def get_match_stats(match : Match) -> tuple:
+	"""
+	Get match stats.
+	Returns:
+		tuple: (blue_team_stats, red_team_stats)
+	"""
+	blue_team = match.blue_team.participants
+	red_team = match.red_team.participants
+
+	blue_stats = [player.stats for player in blue_team]
+	red_stats = [player.stats for player in red_team]
+
+	return blue_stats, red_stats
 
 # Constants
 BASE_TIERLIST_URL = "https://na.op.gg/champions"
