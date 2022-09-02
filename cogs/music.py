@@ -114,7 +114,7 @@ class Music(commands.Cog):
 
 	def __init__(self, bot : commands.Bot):
 		self.bot = bot
-		bot.loop.create_task(self.node_connect())
+		# bot.loop.create_task(self.node_connect())
 
 	# Node Ready Event
 
@@ -127,12 +127,6 @@ class Music(commands.Cog):
 	async def node_connect(self):
 		await self.bot.wait_until_ready()
 		await wavelink.NodePool.create_node(bot = self.bot, host = LAVALINK_HOST, port = LAVALINK_PORT, password = LAVALINK_PASSWORD, https = True)
-
-	# Node Ready Event
-
-	@commands.Cog.listener()
-	async def on_wavelink_node_ready(self, node: wavelink.Node):
-		print(f'Node <{node.identifier}> is ready!')
 
 	# On Track End Event
 

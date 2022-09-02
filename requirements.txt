@@ -1,6 +1,8 @@
-nextcord
+nextcord==2.1.0
 pytz
 python-dotenv
-cassiopeia
+cassiopeia==5.0.3
 matplotlib
 wavelink
+riotwatcher
+aiosqlite
