@@ -1,9 +1,16 @@
-import nextcord, cassiopeia as cass, os, random, matplotlib.pyplot as plt, pandas as pd, numpy as np
+import nextcord 
+import cassiopeia as cass
+import os
+import random
+import matplotlib.pyplot as plt
+import pandas as pd
+import numpy as np
+import arrow
 
+from riotwatcher import LolWatcher
 from cassiopeia import *
 
 from nextcord.ext import commands
-from helpers.time import humanize_delta
 
 from helpers.utils import *
 from helpers.config import MAIN_GUILD_ID, TESTING_GUILD_ID, CASSIOPEIA_CONFIG, RIOT_TOKEN
@@ -38,7 +45,7 @@ class LeagueCommands(commands.Cog):
 		self, 
 		interaction : nextcord.Interaction, 
 		user : str = nextcord.SlashOption(
-			name = "user",
+			name = "summoner",
 			description = "The user to get the profile of.",
 			required = False,
 			default = "Josedeodo"
@@ -47,7 +54,8 @@ class LeagueCommands(commands.Cog):
 			name = "region",
 			description = "The region to get the profile of.",
 			required = False,
-			default = "NA"
+			default = "NA",
+			choices = REGIONS
 		)
 	):
 
@@ -72,11 +80,11 @@ class LeagueCommands(commands.Cog):
 			solo_duo_total = solo_duo_wins + solo_duo_losses
 			solo_duo_winrate = (solo_duo_wins * 100) / (solo_duo_total)
 
-			embed.add_field(name = "Ranked Solo/Duo", value = f"Rank: {solo_duo_emoji} {solo_duo_rank} {solo_duo_division} {solo_duo_lps} LP\nTotal Games: {solo_duo_total}\nWins: {solo_duo_wins}\nLosses: {solo_duo_losses}\nWin Rate: {solo_duo_winrate:.2f}%", inline = True)
+			embed.add_field(name = "> Ranked Solo/Duo", value = f"Rank: {solo_duo_emoji} {solo_duo_rank} {solo_duo_division} {solo_duo_lps} LP\nTotal Games: {solo_duo_total}\nWins: {solo_duo_wins}\nLosses: {solo_duo_losses}\nWin Rate: {solo_duo_winrate:.2f}%", inline = True)
 		except ValueError:
 			solo_duo_emoji = "<:Unranked:991907027150458881>"
 
-			embed.add_field(name = "Ranked Solo/Duo", value = f"Rank: {solo_duo_emoji} Unranked", inline = True)
+			embed.add_field(name = "> Ranked Solo/Duo", value = f"Rank: {solo_duo_emoji} Unranked", inline = True)
 			
 		try:
 			flex_rank = entries.flex.league.tier
@@ -88,11 +96,11 @@ class LeagueCommands(commands.Cog):
 			flex_total = flex_wins + flex_losses
 			flex_winrate = (flex_wins * 100) / (flex_total)
 
-			embed.add_field(name = "Ranked Flex", value = f"Rank: {flex_emoji} {flex_rank} {flex_division} {flex_lps} LP \nTotal Games: {flex_total}\nWins: {flex_wins}\nLosses: {flex_losses}\nWin Rate: {flex_winrate:.2f}%", inline = True)
+			embed.add_field(name = "> Ranked Flex", value = f"Rank: {flex_emoji} {flex_rank} {flex_division} {flex_lps} LP \nTotal Games: {flex_total}\nWins: {flex_wins}\nLosses: {flex_losses}\nWin Rate: {flex_winrate:.2f}%", inline = True)
 		except ValueError:
 			flex_emoji = "<:Unranked:991907027150458881>"
 
-			embed.add_field(name = "Ranked Flex", value = f"Rank: {flex_emoji} Unranked", inline = True)
+			embed.add_field(name = "> Ranked Flex", value = f"Rank: {flex_emoji} Unranked", inline = True)
 
 		masteries = cass.get_champion_masteries(summoner = summoner, region = region)
 
@@ -113,10 +121,11 @@ class LeagueCommands(commands.Cog):
 		
 		for cm in best:
 			mastery_emoji = get_mastery_emoji(int(cm.level))
+			champion_emoji = get_champion_emoji_by_id(str(cm.champion.id))
 			points = human_format(cm.points)
 			counter += 1
 			if counter <= 5:
-				champions += f"{mastery_emoji} {cm.champion.name} - **{str(points)}**\n"
+				champions += f"{counter}) {mastery_emoji} {champion_emoji} {cm.champion.name} - **{str(points)}**\n"
 			else:
 				break
 
@@ -131,32 +140,15 @@ class LeagueCommands(commands.Cog):
 				points_.append(i.points)
 			else:
 				break
-		
-		plt.bar(champs_, points_, color = "pink")
 
-		plt.xlabel = "Champions"
-		plt.ylabel = "Mastery Points"
-
-		plt.savefig(f"{user.replace(' ', '')}.png")
-
-		plt.close()
-
-		embed.add_field(name = "Best Champions", value = f"{champions}", inline = False)
-		embed.add_field(name = "Mastery Stats", value = f"{len(m7)}x <:mastery7:993688390723715172> {len(m6)}x <:mastery6:993688366317043772> {len(m5)}x <:mastery5:993688341063159860>\nTotal Mastery Points: {total_points}", inline = True)
+		embed.add_field(name = "> Best Champions", value = f"{champions}", inline = False)
+		embed.add_field(name = "> Mastery Stats", value = f"{len(m7)}x <:mastery7:993688390723715172> {len(m6)}x <:mastery6:993688366317043772> {len(m5)}x <:mastery5:993688341063159860>\nTotal Mastery Points: {total_points}", inline = True)
 	
 		embed.set_author(name = "Killer Bot | League Of Legends Profile", icon_url = self.bot.user.avatar.url)
 		embed.set_footer(text = f"Requested by {interaction.user}", icon_url = interaction.user.avatar.url)
 		embed.set_thumbnail(url = summoner.profile_icon.url)
 
-		file_ = nextcord.File(f"{user.replace(' ', '')}.png")
-		embed.set_image(url = f"attachment://{user.replace(' ', '')}.png")
-
-		await interaction.send(embed = embed, file = file_)
-
-		try:
-			os.remove(f"{user.replace(' ', '')}.png")
-		except:
-			print(f"{user.replace(' ', '')}.png was not found on local files.")
+		await interaction.send(embed = embed)
 			
 	# Last Match Command
 	@nextcord.slash_command(
@@ -169,7 +161,7 @@ class LeagueCommands(commands.Cog):
 		interaction : nextcord.Interaction,
 		user : str = nextcord.SlashOption(
 			name = "summoner",
-			description = "The summoner to get the last match of.",
+			description = "The summoner name to get the last match of.",
 			required = True
 		),
 		region : str = nextcord.SlashOption(
@@ -178,8 +170,7 @@ class LeagueCommands(commands.Cog):
 			required = True
 		)
 	):
-		await interaction.response.defer(with_message = True)
-
+		await interaction.response.defer()
 		# Getting summoner, his match history and the last match
 		summoner = Summoner(name = user, region = region)
 		match_history = MatchHistory(puuid = summoner.puuid, continent = summoner.region.continent)
@@ -194,7 +185,7 @@ class LeagueCommands(commands.Cog):
 		red_team_players = get_team_players(red_team)
 		# Getting team's champions
 		blue_champions = get_team_champions(blue_team)
-		red_champions = get_team_champions(red_team)	
+		red_champions = get_team_champions(red_team)
 		# Getting team's bans
 		blue_bans = get_team_bans(blue_info)
 		red_bans = get_team_bans(red_info)
@@ -204,59 +195,83 @@ class LeagueCommands(commands.Cog):
 		map_ = get_map_name(get_map_id(last_match.id, region))
 		queue = last_match.queue.value.replace("_", " ").title()
 
+		blue_stats = get_match_stats(last_match)[0]
+		red_stats = get_match_stats(last_match)[1]
+
+		# get participant.id == summoner.id
+		participant = next(filter(lambda p: p.summoner.id == summoner.id, last_match.participants), None)
+
 		# Red team champions message
 		red_message = ""
-		for player, champion in zip(red_team_players, red_champions):
-			emoji = get_champion_emoji(champion.name.replace(' ', '_').replace('\'', '').lower())
-			red_message += f"{emoji + ' | __**' + champion.name + '**__' if player.name == summoner.name else emoji  + ' | ' + champion.name} - {'__**' + player.name + '**__' if player.name == summoner.name else player.name}\n"
+		for player, champion, stats in zip(red_team_players, red_champions, red_stats):
+			emoji = get_champion_emoji_by_id(str(champion.id))
+			cm = f"{emoji + ' __**' + champion.name + '**__' if player.name == summoner.name else emoji + ' ' + champion.name}"
+			pm = f"{'__**' + player.name + '**__' if player.name == summoner.name else player.name}"
+			sm = f"{'**' + str(stats.kills) + '**/**' + str(stats.deaths) + '**/**' + str(stats.assists) + '** | **' + str(stats.total_minions_killed) + 'cs** | **' + human_format(stats.total_damage_dealt_to_champions) + ' DMG**' if player.name == summoner.name else str(stats.kills) + '/' + str(stats.deaths) + '/' + str(stats.assists) + ' | ' + str(stats.total_minions_killed) + ' cs | ' + human_format(stats.total_damage_dealt_to_champions) + ' DMG'}"
+			red_message += f"{cm} - {pm} ({sm})\n"
 		# Blue team champions message
 		blue_message = ""
-		for player, champion in zip(blue_team_players, blue_champions):
-			emoji = get_champion_emoji(champion.name.replace(' ', '_').replace('\'', '').lower())
-			blue_message += f"{emoji + ' | __**' + champion.name + '**__' if player.name == summoner.name else emoji  + ' | ' + champion.name} - {'__**' + player.name + '**__' if player.name == summoner.name else player.name}\n"
+		for player, champion, stats in zip(blue_team_players, blue_champions, blue_stats):
+			emoji = get_champion_emoji_by_id(str(champion.id))
+			cm = f"{emoji + ' __**' + champion.name + '**__' if player.name == summoner.name else emoji + ' ' + champion.name}"
+			pm = f"{'__**' + player.name + '**__' if player.name == summoner.name else player.name}"
+			sm = f"{'**' + str(stats.kills) + '**/**' + str(stats.deaths) + '**/**' + str(stats.assists) + '** | **' + str(stats.total_minions_killed) + 'cs** | **' + human_format(stats.total_damage_dealt_to_champions) + ' DMG**' if player.name == summoner.name else str(stats.kills) + '/' + str(stats.deaths) + '/' + str(stats.assists) + ' | ' + str(stats.total_minions_killed) + ' cs | ' + human_format(stats.total_damage_dealt_to_champions) + ' DMG'}"
+			blue_message += f"{cm} - {pm} ({sm})\n"
 		# Red team bans message
 		red_bans_message = ""
 		for ban in red_bans:
-			emoji = get_champion_emoji(ban.name.replace(' ', '_').replace('\'', '').lower())
-			red_bans_message += f"{emoji} | {ban.name} "
+			if ban != None:
+				emoji = get_champion_emoji_by_id(str(ban.id))
+				red_bans_message += f"{emoji} {ban.name}\n"
+			else:
+				red_bans_message += ""
+				continue
 		# Blue team bans message
 		blue_bans_message = ""
 		for ban in blue_bans:
-			emoji = get_champion_emoji(ban.name.replace(' ', '_').replace('\'', '').lower())
-			blue_bans_message += f"{emoji} | {ban.name} "
+			if ban != None:
+				emoji = get_champion_emoji_by_id(str(ban.id))
+				blue_bans_message += f"{emoji} {ban.name}\n"
+			else:
+				blue_bans_message += ""
+				continue
 
 		# Creating embed
 		embed = nextcord.Embed(
-			title = f"Summoner Last Match",
-			color = nextcord.Color.blue() if winner == 'blue' else nextcord.Color.red(),
-			timestamp = datetime.now()
+			color = nextcord.Color.blue() if participant.stats.win == True else nextcord.Color.red()
 		)
+
 		# Summoner info field
 		embed.add_field(
 			name = "> Summoner Information", 
 			value = f"**Name:** `{summoner.name}`\n**Region:** `{region}`",
 			inline = False
-		)
-		
+		)		
 		# Match info field
+		# create unix timestamp from Arrow object
 		embed.add_field(
 			name = "> Match Information", 
-			value = f"**Map:** `{map_}`\n**Queue:** `{queue}`\n**Duration:** `{last_match.duration}`\n**Winner:** `{'Blue Team' if winner == 'blue' else 'Red Team'}`\n\n[Match Link](https://lan.op.gg/summoners/{region.lower()}/{summoner.name}/matches/jdp6XO-nKsUs5UI30_OUUGij5G4G9PkwXrb8n_lfGzg%3D/1661657811000)",
+			value = f"**Map**: `{map_}`\n**Queue**: `{queue}`\n**Date**: <t:{arrow.get(last_match.creation).timestamp}> (<t:{arrow.get(last_match.creation).timestamp}:R>)\n**Duration**: `{last_match.duration}`\n**Result**: `{'Win' if participant.stats.win == True else 'Defeat'}`",
 			inline = False
 		)
 		# Bans info field
 		if last_match.queue in cass.data.RANKED_QUEUES:	
 			embed.add_field(
-				name = "> Banned Champions",
-				value = f"**Blue Team Bans**: {blue_bans_message}\n**Red Team Bans**: {red_bans_message}",
-				inline = False
+				name = "> Blue Team Bans",
+				value = blue_bans_message,
+				inline = True
+			)
+			embed.add_field(
+				name = "> Red Team Bans",
+				value = red_bans_message,
+				inline = True
 			)
 		# Team fields
-		embed.add_field(name = "> Blue Team", value = blue_message, inline = True)
-		embed.add_field(name = "> Red Team", value = red_message, inline = True)
+		embed.add_field(name = "> Blue Team", value = blue_message, inline = False)
+		embed.add_field(name = "> Red Team", value = red_message, inline = False)
 		# Author, footer and thumbnail
 		embed.set_author(name = "Killer Bot | League Of Legends", icon_url = self.bot.user.avatar.url)
-		embed.set_footer(text = f"Requested by {interaction.user} | Match ID: {last_match.id}", icon_url = interaction.user.avatar.url)
+		embed.set_footer(text = f"Requested by {interaction.user} • Match ID: {last_match.id}", icon_url = interaction.user.avatar.url)
 		embed.set_thumbnail(url = summoner.profile_icon.url)
 
 		# Sending embed
@@ -268,7 +283,13 @@ class LeagueCommands(commands.Cog):
 		description = "Shows the list of champions.",
 		guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID]
 	)
-	async def championlist(self, interaction : nextcord.Interaction):
+	async def championlist(self, interaction : nextcord.Interaction, region : str = nextcord.SlashOption(
+		name = "region",
+		description = "The region of the summoner.",
+		required = True,
+		choices = REGIONS, 
+		default = "NA"
+	)):
 		await interaction.response.defer(with_message = True)
 
 		# Creating embed
@@ -278,7 +299,7 @@ class LeagueCommands(commands.Cog):
 			timestamp = datetime.now()
 		)
 		# All champions
-		champions = cass.get_champions("NA")
+		champions = cass.get_champions(region)
 		# Champions message
 		champions_message = ""
 		champions_dict = {}
@@ -286,12 +307,15 @@ class LeagueCommands(commands.Cog):
 		for champion in champions:
 			count += 1
 			champions_message += f"{count}. {champion.name}\n"
-			champions_dict[count] = champion.name
+			champions_dict[count] = {
+				"name": champion.name,
+				"id": champion.id
+			}
 		# Json file
-		with open("champions.json", "w") as file:
+		with open(f"champions_{region.lower()}.json", "w") as file:
 			json.dump(champions_dict, file, indent = 4)
 		# Chunk message
-		champions_message = chunk(champions_message, 1017)
+		champions_message = chunk(champions_message, 1024)
 		# Splitting Content
 		if len(champions_message) > 1:
 			embed.add_field(name = "Champion List", value = f"{champions_message[0]}", inline = False)
@@ -321,13 +345,14 @@ class LeagueCommands(commands.Cog):
 			name = "champion",
 			description = "Champion name",
 			required = True,
-			default = "Aatrox"
+			default = "Aatrox" 
 		), 
 		region : str = nextcord.SlashOption(
 			name = "region",
 			description = "Region",
 			required = True,
-			default = "world"
+			default = "world",
+			choices = REGIONS
 		), 
 		elo : str = nextcord.SlashOption(
 			name = "elo",
@@ -405,7 +430,8 @@ class LeagueCommands(commands.Cog):
 			name = "region",
 			description = "Region",
 			required = True,
-			default = "NA"
+			default = "NA",
+			choices = REGIONS
 		), 
 		elo : str = nextcord.SlashOption(
 			name = "elo",
