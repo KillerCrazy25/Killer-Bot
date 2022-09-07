@@ -29,7 +29,7 @@ logger = Logger()
 watcher = LolWatcher(RIOT_TOKEN)
 
 # League Cog
-class LeagueCommands(commands.Cog):
+class LeagueCommands(commands.Cog, name = "League Of Legends", description = "League of Legends commands."):
 
 	# League Constructor
 	def __init__(self, bot : commands.Bot):
@@ -61,7 +61,11 @@ class LeagueCommands(commands.Cog):
 
 		await interaction.response.defer()
 
-		summoner = Summoner(name = user, region = region)
+		try:
+			summoner = await get_summoner_or_fail(user = user, region = region)
+		except ValueError:
+			await interaction.send("The summoner you entered doesn't exist, at least in that region.")
+			return
 
 		embed = nextcord.Embed(
 			description = f"{user}'s Profile | Level {summoner.level}",
@@ -80,11 +84,9 @@ class LeagueCommands(commands.Cog):
 			solo_duo_total = solo_duo_wins + solo_duo_losses
 			solo_duo_winrate = (solo_duo_wins * 100) / (solo_duo_total)
 
-			embed.add_field(name = "> Ranked Solo/Duo", value = f"Rank: {solo_duo_emoji} {solo_duo_rank} {solo_duo_division} {solo_duo_lps} LP\nTotal Games: {solo_duo_total}\nWins: {solo_duo_wins}\nLosses: {solo_duo_losses}\nWin Rate: {solo_duo_winrate:.2f}%", inline = True)
+			embed.add_field(name = "> Ranked Solo/Duo", value = f"**Rank**: {solo_duo_emoji} `{solo_duo_rank} {solo_duo_division} {solo_duo_lps} LP`\n**Total Games**: `{solo_duo_total}`\n**Wins**: `{solo_duo_wins}`\n**Losses**: `{solo_duo_losses}`\n**Win Rate**: `{solo_duo_winrate:.2f}%`", inline = True)
 		except ValueError:
-			solo_duo_emoji = "<:Unranked:991907027150458881>"
-
-			embed.add_field(name = "> Ranked Solo/Duo", value = f"Rank: {solo_duo_emoji} Unranked", inline = True)
+			embed.add_field(name = "> Ranked Solo/Duo", value = f"Rank: <:Unranked:991907027150458881> `Unranked`", inline = True)
 			
 		try:
 			flex_rank = entries.flex.league.tier
@@ -96,11 +98,9 @@ class LeagueCommands(commands.Cog):
 			flex_total = flex_wins + flex_losses
 			flex_winrate = (flex_wins * 100) / (flex_total)
 
-			embed.add_field(name = "> Ranked Flex", value = f"Rank: {flex_emoji} {flex_rank} {flex_division} {flex_lps} LP \nTotal Games: {flex_total}\nWins: {flex_wins}\nLosses: {flex_losses}\nWin Rate: {flex_winrate:.2f}%", inline = True)
+			embed.add_field(name = "> Ranked Flex", value = f"**Rank**: {flex_emoji} `{flex_rank} {flex_division} {flex_lps} LP`\n**Total Games**: `{flex_total}`\n**Wins**: `{flex_wins}`\n**Losses**: `{flex_losses}`\n**Win Rate**: `{flex_winrate:.2f}%`", inline = True)
 		except ValueError:
-			flex_emoji = "<:Unranked:991907027150458881>"
-
-			embed.add_field(name = "> Ranked Flex", value = f"Rank: {flex_emoji} Unranked", inline = True)
+			embed.add_field(name = "> Ranked Flex", value = f"**Rank**: <:Unranked:991907027150458881> `Unranked`", inline = True)
 
 		masteries = cass.get_champion_masteries(summoner = summoner, region = region)
 
@@ -118,6 +118,9 @@ class LeagueCommands(commands.Cog):
 
 		counter = 0
 		champions = ""
+
+		if len(best) == 0:
+			champions = "No champions with mastery level 5 or higher."
 		
 		for cm in best:
 			mastery_emoji = get_mastery_emoji(int(cm.level))
@@ -126,18 +129,6 @@ class LeagueCommands(commands.Cog):
 			counter += 1
 			if counter <= 5:
 				champions += f"{counter}) {mastery_emoji} {champion_emoji} {cm.champion.name} - **{str(points)}**\n"
-			else:
-				break
-
-		champs_ = []
-		points_ = []
-		counter_ = 0
-
-		for i in best:
-			counter_ +=1
-			if counter_ <= 5:
-				champs_.append(i.champion.name)
-				points_.append(i.points)
 			else:
 				break
 
@@ -167,13 +158,22 @@ class LeagueCommands(commands.Cog):
 		region : str = nextcord.SlashOption(
 			name = "region",
 			description = "The region of the summoner.",
-			required = True
+			required = True,
+			choices = REGIONS,
+			default = "NA"
 		)
 	):
-		await interaction.response.defer()
+		await interaction.send(f"> Searching for summoner `{user}` in region `{region}`...")
 		# Getting summoner, his match history and the last match
-		summoner = Summoner(name = user, region = region)
+		try:
+			summoner = await get_summoner_or_fail(user = user, region = region)
+		except ValueError:
+			await interaction.edit_original_message(content = "> The summoner you entered doesn't exist, at least in that region.")
+			return	
 		match_history = MatchHistory(puuid = summoner.puuid, continent = summoner.region.continent)
+		if len(match_history) == 0:
+			await interaction.edit_original_message(content = "> The summoner you entered doesn't have any matches.")
+			return	
 		last_match : Match = match_history[0]
 		# Getting teams and teams information
 		blue_team = get_match_teams(last_match.id, region)[0]
@@ -189,8 +189,6 @@ class LeagueCommands(commands.Cog):
 		# Getting team's bans
 		blue_bans = get_team_bans(blue_info)
 		red_bans = get_team_bans(red_info)
-		# Getting match winner
-		winner = get_winner_team(last_match.id, region)
 		# Getting match queue and map
 		map_ = get_map_name(get_map_id(last_match.id, region))
 		queue = last_match.queue.value.replace("_", " ").title()
@@ -205,18 +203,16 @@ class LeagueCommands(commands.Cog):
 		red_message = ""
 		for player, champion, stats in zip(red_team_players, red_champions, red_stats):
 			emoji = get_champion_emoji_by_id(str(champion.id))
-			cm = f"{emoji + ' __**' + champion.name + '**__' if player.name == summoner.name else emoji + ' ' + champion.name}"
-			pm = f"{'__**' + player.name + '**__' if player.name == summoner.name else player.name}"
-			sm = f"{'**' + str(stats.kills) + '**/**' + str(stats.deaths) + '**/**' + str(stats.assists) + '** | **' + str(stats.total_minions_killed) + 'cs** | **' + human_format(stats.total_damage_dealt_to_champions) + ' DMG**' if player.name == summoner.name else str(stats.kills) + '/' + str(stats.deaths) + '/' + str(stats.assists) + ' | ' + str(stats.total_minions_killed) + ' cs | ' + human_format(stats.total_damage_dealt_to_champions) + ' DMG'}"
-			red_message += f"{cm} - {pm} ({sm})\n"
+			pm = f"{emoji + ' | __**' + player.name + '**__' if player.name == summoner.name else emoji + ' | ' + player.name}"
+			sm = f"{'**' + str(stats.kills) + '**/**' + str(stats.deaths) + '**/**' + str(stats.assists) + '** | **' + str(stats.total_minions_killed) + ' cs** | **' + human_format(stats.total_damage_dealt_to_champions) + ' DMG**' if player.name == summoner.name else str(stats.kills) + '/' + str(stats.deaths) + '/' + str(stats.assists) + ' | ' + str(stats.total_minions_killed) + ' cs | ' + human_format(stats.total_damage_dealt_to_champions) + ' DMG'}"
+			red_message += f"{pm} ({sm})\n"
 		# Blue team champions message
 		blue_message = ""
 		for player, champion, stats in zip(blue_team_players, blue_champions, blue_stats):
 			emoji = get_champion_emoji_by_id(str(champion.id))
-			cm = f"{emoji + ' __**' + champion.name + '**__' if player.name == summoner.name else emoji + ' ' + champion.name}"
-			pm = f"{'__**' + player.name + '**__' if player.name == summoner.name else player.name}"
-			sm = f"{'**' + str(stats.kills) + '**/**' + str(stats.deaths) + '**/**' + str(stats.assists) + '** | **' + str(stats.total_minions_killed) + 'cs** | **' + human_format(stats.total_damage_dealt_to_champions) + ' DMG**' if player.name == summoner.name else str(stats.kills) + '/' + str(stats.deaths) + '/' + str(stats.assists) + ' | ' + str(stats.total_minions_killed) + ' cs | ' + human_format(stats.total_damage_dealt_to_champions) + ' DMG'}"
-			blue_message += f"{cm} - {pm} ({sm})\n"
+			pm = f"{emoji + ' | __**' + player.name + '**__' if player.name == summoner.name else emoji + ' | ' + player.name}"
+			sm = f"{'**' + str(stats.kills) + '**/**' + str(stats.deaths) + '**/**' + str(stats.assists) + '** | **' + str(stats.total_minions_killed) + ' cs** | **' + human_format(stats.total_damage_dealt_to_champions) + ' DMG**' if player.name == summoner.name else str(stats.kills) + '/' + str(stats.deaths) + '/' + str(stats.assists) + ' | ' + str(stats.total_minions_killed) + ' cs | ' + human_format(stats.total_damage_dealt_to_champions) + ' DMG'}"
+			blue_message += f"{pm} ({sm})\n"
 		# Red team bans message
 		red_bans_message = ""
 		for ban in red_bans:
@@ -248,7 +244,6 @@ class LeagueCommands(commands.Cog):
 			inline = False
 		)		
 		# Match info field
-		# create unix timestamp from Arrow object
 		embed.add_field(
 			name = "> Match Information", 
 			value = f"**Map**: `{map_}`\n**Queue**: `{queue}`\n**Date**: <t:{arrow.get(last_match.creation).timestamp}> (<t:{arrow.get(last_match.creation).timestamp}:R>)\n**Duration**: `{last_match.duration}`\n**Result**: `{'Win' if participant.stats.win == True else 'Defeat'}`",
@@ -275,7 +270,7 @@ class LeagueCommands(commands.Cog):
 		embed.set_thumbnail(url = summoner.profile_icon.url)
 
 		# Sending embed
-		await interaction.send(embed = embed)
+		await interaction.edit_original_message(content = None, embed = embed)
 		
 	# Champion List Command
 	@nextcord.slash_command(
@@ -351,7 +346,7 @@ class LeagueCommands(commands.Cog):
 			name = "region",
 			description = "Region",
 			required = True,
-			default = "world",
+			default = "NA",
 			choices = REGIONS
 		), 
 		elo : str = nextcord.SlashOption(
