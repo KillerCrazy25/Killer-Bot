@@ -227,6 +227,14 @@ def get_champion_analytics(champion : str = "annie", region : str = "NA", elo : 
 
 	return stats
 
+async def get_summoner_or_fail(user : str, region : str) -> Summoner:
+	"""Get summoner object."""
+	summoner = Summoner(name = user, region = region)
+	if summoner.puuid == '?':
+		raise ValueError
+	
+	return summoner
+
 # Function That Gets Champions Tierlist Via WebScraping U.GG Website
 def get_tierlist(region : Optional[str] = "na", tier : Optional[str] = "platinum_plus", position : Optional[str] = "top") -> Dict:
 	url = get_tierlist_url(region, tier, position)
