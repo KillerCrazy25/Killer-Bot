@@ -1,5 +1,5 @@
 import nextcord
-from nextcord.ext import commands
+from nextcord.ext import commands, application_checks
 
 from datetime import datetime
 
@@ -8,21 +8,34 @@ from pytz import timezone
 from helpers.config import MAIN_GUILD_ID, TESTING_GUILD_ID
 
 # Moderation Cog
-
-class ModerationCommands(commands.Cog):
+class ModerationCommands(commands.Cog, name = "Moderation", description = "Commands for Moderators"):
 
 	# Moderation Constructor
-
 	def __init__(self, bot : commands.Bot):
 		self.bot : commands.Bot = bot
 
 	# Ban Command
-
-	@commands.command(description = "Ban a user.")
-	@commands.has_permissions(ban_members = True)
-	async def ban(self, ctx : commands.Context, user : nextcord.Member = None, *, reason : str = "No reason provided."):
+	@nextcord.slash_command(name = "ban", description = "Bans a user from the server.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
+	@application_checks.has_permissions(ban_members = True)
+	async def ban(
+		self, 
+		interaction : nextcord.Interaction, 
+		user : nextcord.Member = nextcord.SlashOption(
+			name = "user",
+			description = "The user to ban.",
+			required = False,
+			default = None		
+		), 
+		*, 
+		reason : str = nextcord.SlashOption(
+			name = "reason",
+			description = "The reason for the ban.",
+			required = False,
+			default = None
+		)
+	):
 		if user == None:
-			return await ctx.send(embed = nextcord.Embed(
+			return await interaction.send(embed = nextcord.Embed(
 				description = "Please provide a user to ban.",
 				color = nextcord.Color.dark_gray()
 			)
@@ -32,8 +45,8 @@ class ModerationCommands(commands.Cog):
 			), 
 			delete_after = 15
 		)
-		if user == ctx.author:
-			return await ctx.send(embed = nextcord.Embed(
+		if user == interaction.user:
+			return await interaction.send(embed = nextcord.Embed(
 				description = "Sorry, you can't ban yourself.",
 				color = nextcord.Color.dark_gray()
 			)
@@ -44,7 +57,7 @@ class ModerationCommands(commands.Cog):
 			delete_after = 15
 		)
 		if user == user.guild.owner:
-			return await ctx.send(embed = nextcord.Embed(
+			return await interaction.send(embed = nextcord.Embed(
 				description = "Sorry, you can't ban the server owner.",
 				color = nextcord.Color.dark_gray()
 			)
@@ -54,8 +67,8 @@ class ModerationCommands(commands.Cog):
 			), 
 			delete_after = 15
 		)
-		if ctx.author.top_role.position < user.top_role.position:
-			return await ctx.send(embed = nextcord.Embed(
+		if interaction.user.top_role.position < user.top_role.position:
+			return await interaction.send(embed = nextcord.Embed(
 				description = "Sorry, you can't ban someone with a higher role than you.",
 			)
 			.set_author(
@@ -64,8 +77,8 @@ class ModerationCommands(commands.Cog):
 			),
 			delete_after = 15
 		)
-		if ctx.author.top_role.position == user.top_role.position:
-			return await ctx.send(embed = nextcord.Embed(
+		if interaction.user.top_role.position == user.top_role.position:
+			return await interaction.send(embed = nextcord.Embed(
 				description = "Sorry, you can't ban someone with the same role as you.",
 			)
 			.set_author(
@@ -76,31 +89,33 @@ class ModerationCommands(commands.Cog):
 		)
 
 		embed = nextcord.Embed(
-			description = f"{user} has been banned from {ctx.guild.name}!",
+			description = f"{user} has been banned from {interaction.guild.name}!",
 			color = nextcord.Color.red(),
 			timestamp = datetime.now(tz = timezone("US/Eastern"))
 		)
 
-		embed.add_field(name = "Moderator", value = ctx.author.mention, inline = True)
+		embed.add_field(name = "Moderator", value = interaction.user.mention, inline = True)
 		embed.add_field(name = "Duration", value = "Permanent", inline = True)
 		embed.add_field(name = "Reason", value = reason, inline = False)
 
 		embed.set_author(name = "Killer Bot | Moderation", icon_url = self.bot.user.avatar.url)
 
-		await ctx.send(embed = embed)
 		await user.ban(reason = reason)
+		try:
+			await interaction.send(embed = embed)
+		except:
+			await interaction.send("User has been banned, but there was an error trying to send the embed.")
 
-		print("{} has been banned in {} by {} for {}.".format(user, ctx.author.guild.id, ctx.author, reason))
+		print("{} has been banned in {} by {} for {}.".format(user, interaction.user.guild.id, interaction.user, reason))
 
 	# Unban Command
-
-	@commands.command(description = "Unban a user.")
-	@commands.has_permissions(ban_members = True)
-	async def unban(self, ctx : commands.Context, id : int):
+	@nextcord.slash_command(name = "unban", description = "Unbans a user from the server.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
+	@application_checks.has_permissions(ban_members = True)
+	async def unban(self, interaction : nextcord.Interaction, id : int):
 		user = await self.bot.fetch_user(id)
 
 		if user == None:
-			return await ctx.send(embed = nextcord.Embed(
+			return await interaction.send(embed = nextcord.Embed(
 				description = "Please provide the user id of the user that you want to unban.",
 				color = nextcord.Color.dark_gray()
 			)
@@ -110,8 +125,8 @@ class ModerationCommands(commands.Cog):
 			), 
 			delete_after = 15
 		)
-		if user == ctx.author:
-			return await ctx.send(embed = nextcord.Embed(
+		if user == interaction.user:
+			return await interaction.send(embed = nextcord.Embed(
 				description = "Sorry, you can't unban yourself.",
 				color = nextcord.Color.dark_gray()
 			)
@@ -123,40 +138,61 @@ class ModerationCommands(commands.Cog):
 		)
 
 		embed = nextcord.Embed(
-			description = f"{user} has been unbanned from {ctx.guild.name}!",
+			description = f"{user} has been unbanned from {interaction.guild.name}!",
 			color = nextcord.Color.green(),
 			timestamp = datetime.now(tz = timezone("US/Eastern"))
 		)
 
-		embed.add_field(name = "Moderator", value = ctx.author.mention, inline = True)
+		embed.add_field(name = "Moderator", value = interaction.user.mention, inline = True)
 
 		embed.set_author(name = "Killer Bot | Moderation", icon_url = self.bot.user.avatar.url)
 
-		await ctx.send(embed = embed)
-		print("{} has been unbanned in {} by {}.".format(user, ctx.author.guild.id, ctx.author))
-		await ctx.guild.unban(user)
+		await interaction.guild.unban(user)
+		try:
+			await interaction.send(embed = embed)
+		except:
+			await interaction.send("User has been unbanned, but there was an error trying to send the embed.")
+		print("{} has been unbanned in {} by {}.".format(user, interaction.user.guild.id, interaction.user))	
 
 	# Clear Command
-	
-	@commands.command(description = "Clear messages in a specified channel.", aliases = ["purge"])
-	@commands.has_permissions(manage_messages = True)
-	async def clear(self, ctx : commands.Context, limit : int = 5, channel : nextcord.TextChannel = None):
+	@nextcord.slash_command(name = "clear", description = "Clears a certain amount of messages a text channel.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
+	@application_checks.has_permissions(manage_messages = True)
+	async def clear(
+		self, 
+		interaction : nextcord.Interaction, 
+		limit : int = nextcord.SlashOption(
+			name = "limit",
+			description = "The amount of messages to clear.",
+			required = True,
+			default = 5
+		), 
+		channel : str = nextcord.SlashOption(
+			name = "channel",
+			description = "The channel to clear messages from.",
+			required = False,
+			default = None,
+		) 
+	):
 		if channel == None:
-			channel = ctx.channel
+			channel = interaction.channel
 
+		# get channel id by name
+		if isinstance(channel, str):
+			channel = nextcord.utils.get(interaction.guild.text_channels, name = channel)
+		
 		if limit < 100:
 			embed = nextcord.Embed(
-				description = f"{ctx.author} has cleared {limit} messages in {channel}.",
+				description = f"{interaction.user} has cleared {limit} messages in {channel}.",
 				color = nextcord.Color.og_blurple()
 			)
 
 			embed.set_author(name = "Killer Bot | Moderation", icon_url = self.bot.user.avatar.url)
 
 			await channel.purge(limit = limit)
-			await ctx.send(embed = embed)
+			await interaction.send(embed = embed)
 
 		else:
-			await ctx.send(embed = nextcord.Embed(
+			await interaction.send(embed = nextcord.Embed(
 				description = "Please provide a number less than 100.",
 				color = nextcord.Color.dark_gray()
 			)
@@ -165,6 +201,18 @@ class ModerationCommands(commands.Cog):
 				icon_url = self.bot.user.avatar.url
 			), 
 			delete_after = 15
+		)
+
+	@clear.on_autocomplete("channel")
+	async def get_channels(self, interaction : nextcord.Interaction, channel : str):
+		channels = interaction.guild.text_channels
+		if not channel:
+			# send the full autocomplete list
+			await interaction.response.send_autocomplete([chan.name for chan in channels])
+			return
+		
+		await interaction.response.send_autocomplete(
+			channel_list = [chan.name for chan in channels if channel.name in chan.name]
 		)
 
 def setup(bot : commands.Bot):
