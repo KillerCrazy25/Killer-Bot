@@ -30,24 +30,24 @@ async def guilds(interaction : nextcord.Interaction):
 
 	await interaction.send("I'm in " + str(len(bot.guilds)) + " guilds\n\n**Guilds**\n" + '\n'.join('Name: ' + guild.name + ' - ' + 'ID: ' + str(guild.id) for guild in bot.guilds))
 
-@bot.event
-async def on_message(message : nextcord.Message):
-	if message.author.bot:
-		logger.info("Author is a bot.")
-		return
-	if message.guild is None:
-		logger.info("Message sent in DM.")
-		return
+# @bot.event
+# async def on_message(message : nextcord.Message):
+# 	if message.author.bot:
+# 		logger.info("Author is a bot.")
+# 		return
+# 	if message.guild is None:
+# 		logger.info("Message sent in DM.")
+# 		return
 	
-	guild = await get_guild(message.guild.id)
-	if guild is None:
-		await add_guild(message.guild.id, message.guild.name, message.guild.owner_id)
-		guild = await get_guild(message.guild.id)
-		logger.info(f"Added guild {message.guild.name} with ID {message.guild.id}")
-		return
+# 	guild = await get_guild(message.guild.id)
+# 	if guild is None:
+# 		await add_guild(message.guild.id, message.guild.name, message.guild.owner_id)
+# 		guild = await get_guild(message.guild.id)
+# 		logger.info(f"Added guild {message.guild.name} with ID {message.guild.id}")
+# 		return
 	
-	await add_message(message.id, message.author.id, message.content, int(message.created_at.timestamp()))
-	logger.info("Message added to database.")
+# 	await add_message(message.id, message.author.id, message.content, int(message.created_at.timestamp()))
+# 	logger.info("Message added to database.")
 
 # Global Message Command
 @bot.slash_command(name = "globalmsg", description = "Sends a global message to all servers the bot is in", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
@@ -196,16 +196,20 @@ class HelpDropdown(nextcord.ui.View):
 		max_values = 1,
 		options = [
 			nextcord.SelectOption(
-				label = "Moderation", description = f"`/help Moderation`"
+				label = "Main Page",
+				description = "/help"
 			),
 			nextcord.SelectOption(
-				label = "League Of Legends", description = f"`/help League Of Legends`"
+				label = "Moderation", description = f"/help Moderation"
 			),
 			nextcord.SelectOption(
-				label = "Music", description = f"`/help Music`"
+				label = "League Of Legends", description = f"/help League Of Legends"
 			),
 			nextcord.SelectOption(
-				label = "Variety", description = f"`/help Variety`"
+				label = "Music", description = f"/help Music"
+			),
+			nextcord.SelectOption(
+				label = "Variety", description = f"/help Variety"
 			)
 		]
 	)
@@ -213,161 +217,15 @@ class HelpDropdown(nextcord.ui.View):
 	# Select Menu Callback
 	async def help_callback(self, select, interaction: nextcord.Interaction):
 		select.placeholder = f"{select.values[0]} Help Page"
-		if select.values[0] == "Moderation":
-			embed = nextcord.Embed(
-				title = f"Moderation Commands:",
-				color = nextcord.Color.blurple(),
-				timestamp = datetime.now(tz = timezone("US/Eastern"))
-			).set_author(
-				name = "Killer Bot | Help",
-				icon_url = bot.user.avatar.url
+		builder = EmbedBuilder(bot)
+		if select.values[0] == "Main Page":
+			return await interaction.response.edit_message(
+				embed = await builder.help_main_page_embed(interaction.user),
+				view = self
 			)
-			for command in bot.get_cog("Moderation").application_commands:
-				description = command.description
-				options = command.options
-				if not description or description is None or description == "":
-					description = "No description"
+		embed = await builder.help_modules_page_embed(select.values[0], interaction.user)
 
-				if not options or options is None or options == "":
-					options_message = ""
-				
-				options_message = ""
-				i = 0
-				for option_name, option_content in options.items():
-					i += 1
-					options_message += f"\n    *{i}.* **{option_name}**: `{option_content.description}` {'(**Required**)' if option_content.required else ''}"
-					
-				embed.add_field(
-					name = f"> {command.name.title()} Command",
-					value = f"\n- **Description**: `{description}`\n- **Usage**: `/{command.name}`" + f" `<options>`\n- **Options**: {options_message}" if options else f"\n- **Description**: `{description}`\n- **Usage**: `/{command.name}`",
-					inline = False
-				)
-			await interaction.response.edit_message(embed = embed, view = self)
-
-		elif select.values[0] == "League Of Legends":
-			embed = nextcord.Embed(
-				title = f"League Of Legends Commands:",
-				color = nextcord.Color.blurple(),
-				timestamp = datetime.now(tz = timezone("US/Eastern"))
-			).set_author(
-				name = "Killer Bot | Help",
-				icon_url = bot.user.avatar.url
-			)
-			for command in bot.get_cog("League Of Legends").application_commands:
-				description = command.description
-				options = command.options
-				if not description or description is None or description == "":
-					description = "No description"
-
-				if not options or options is None or options == "":
-					options_message = ""
-				
-				options_message = ""
-				i = 0
-				for option_name, option_content in options.items():
-					i += 1
-					options_message += f"\n    *{i}.* **{option_name}**: `{option_content.description}` {'(**Required**)' if option_content.required else ''}"
-					
-				embed.add_field(
-					name = f"> {command.name.title()} Command",
-					value = f"\n- **Description**: `{description}`\n- **Usage**: `/{command.name}`" + f" `<options>`\n- **Options**: {options_message}" if options else f"\n- **Description**: `{description}`\n- **Usage**: `/{command.name}`",
-					inline = False
-				)
-			await interaction.response.edit_message(embed = embed, view = self)
-
-		elif select.values[0] == "Music":
-			embed = nextcord.Embed(
-				title = f"Music Commands:",
-				color = nextcord.Color.blurple(),
-				timestamp = datetime.now(tz = timezone("US/Eastern"))
-			).set_author(
-				name = "Killer Bot | Help",
-				icon_url = bot.user.avatar.url
-			)
-			for command in bot.get_cog("Music").application_commands:
-				description = command.description
-				options = command.options
-				if not description or description is None or description == "":
-					description = "No description"
-
-				if not options or options is None or options == "":
-					options_message = ""
-				
-				options_message = ""
-				i = 0
-				for option_name, option_content in options.items():
-					i += 1
-					options_message += f"\n    *{i}.* **{option_name}**: `{option_content.description}` {'(**Required**)' if option_content.required else ''}"
-					
-				embed.add_field(
-					name = f"> {command.name.title()} Command",
-					value = f"\n- **Description**: `{description}`\n- **Usage**: `/{command.name}`" + f" `<options>`\n- **Options**: {options_message}" if options else f"\n- **Description**: `{description}`\n- **Usage**: `/{command.name}`",
-					inline = False
-				)
-			await interaction.response.edit_message(embed = embed, view = self)
-
-		elif select.values[0] == "Variety":
-			embed = nextcord.Embed(
-				title = f"Variety Commands:",
-				color = nextcord.Color.blurple(),
-				timestamp = datetime.now(tz = timezone("US/Eastern"))
-			).set_author(
-				name = "Killer Bot | Help",
-				icon_url = bot.user.avatar.url
-			)
-			for command in bot.get_cog("Variety").application_commands:
-				description = command.description
-				options = command.options
-				if not description or description is None or description == "":
-					description = "No description"
-
-				if not options or options is None or options == "":
-					options_message = ""
-				
-				options_message = ""
-				i = 0
-				for option_name, option_content in options.items():
-					i += 1
-					options_message += f"\n    *{i}.* **{option_name}**: `{option_content.description}` {'(**Required**)' if option_content.required else ''}"
-					
-				embed.add_field(
-					name = f"> {command.name.title()} Command",
-					value = f"\n- **Description**: `{description}`\n- **Usage**: `/{command.name}`" + f" `<options>`\n- **Options**: {options_message}" if options else f"\n- **Description**: `{description}`\n- **Usage**: `/{command.name}`",
-					inline = False
-				)
-			await interaction.response.edit_message(embed = embed, view = self)
-
-# Return Button
-class ReturnButtonView(nextcord.ui.View):
-	def __init__(self, message : nextcord.Message):
-		self.message = message
-		super().__init__(timeout = 600)
-
-	@nextcord.ui.button(
-		label = "Back",
-		style = nextcord.ButtonStyle.blurple
-	)
-	async def return_callback(self, button, interaction : nextcord.Interaction):	
-		view = HelpDropdown()
-		embed = nextcord.Embed(
-			title = f"Help",
-			color = nextcord.Color.blurple(),
-			timestamp = datetime.now(tz = timezone("US/Eastern"))
-		)
-		embed.set_thumbnail(url = f"{bot.user.avatar.url}")
-		embed.add_field(name = "Moderation:", value = "`/help Moderation`", inline = False)
-		embed.add_field(name = "League Of Legends:", value = "`/help League Of Legends`", inline = False)
-		embed.add_field(name = "Music:", value = "`/help Music`", inline = False)
-		embed.add_field(name = "Variety:", value = "`/help Variety`", inline = False)
-		embed.set_footer(
-			text = f"Requested by {interaction.user}",
-			icon_url = interaction.user.avatar.url
-		)
-		embed.set_author(
-			name = "Killer Bot | Help",
-			icon_url = bot.user.avatar.url
-		)
-		view.message = await self.message.edit(embed = embed, view = view)	
+		await interaction.response.edit_message(embed = embed, view = self)
 
 # Help Command
 @bot.slash_command(name = "help", description = "Shows help message.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
@@ -379,156 +237,18 @@ async def help(
 		required = False
 	)
 ):
-	logger.info(module)
 	if not module:
 		view = HelpDropdown()
-		embed = nextcord.Embed(
-			title = f"Help",
-			color = nextcord.Color.blurple(),
-			timestamp = datetime.now(tz = timezone("US/Eastern"))
-		)
-		embed.set_thumbnail(url = f"{bot.user.avatar.url}")
-		embed.add_field(name = "Moderation:", value = "`/help Moderation`", inline = False)
-		embed.add_field(name = "League Of Legends:", value = "`/help League Of Legends`", inline = False)
-		embed.add_field(name = "Music:", value = "`/help Music`", inline = False)
-		embed.add_field(name = "Variety:", value = "`/help Variety`", inline = False)
-		embed.set_footer(
-			text = f"Requested by {interaction.user}",
-			icon_url = interaction.user.avatar.url
-		)
-		embed.set_author(
-			name = "Killer Bot | Help",
-			icon_url = bot.user.avatar.url
-		)
-		view.message = await interaction.send(embed = embed, view = view, ephemeral = True)
+		builder = EmbedBuilder(bot)
+		embed = await builder.help_main_page_embed(interaction.user)
+
+		view.message = await interaction.response.send_message(embed = embed, view = view, ephemeral = True)
 	else:
-		if module.lower() == "moderation":
-			view = ReturnButtonView(interaction.message)
-			embed = nextcord.Embed(
-				title = f"Moderation Commands:",
-				color = nextcord.Color.blurple(),
-				timestamp = datetime.now(tz = timezone("US/Eastern"))
-			).set_author(
-				name = "Killer Bot | Help",
-				icon_url = bot.user.avatar.url
-			)
-			for command in bot.get_cog("Moderation").application_commands:
-				description = command.description
-				options = command.options
-				if not description or description is None or description == "":
-					description = "No description"
+		builder = EmbedBuilder(bot)
+		embed = await builder.help_modules_page_embed(module, interaction.user)
+		view = HelpDropdown()
 
-				if not options or options is None or options == "":
-					options_message = ""
-				
-				options_message = ""
-				i = 0
-				for option_name, option_content in options.items():
-					i += 1
-					options_message += f"\n    *{i}.* **{option_name}**: `{option_content.description}` {'(**Required**)' if option_content.required else ''}"
-					
-				embed.add_field(
-					name = f"> {command.name.title()} Command",
-					value = f"\n- **Description**: `{description}`\n- **Usage**: `/{command.name}`" + f" `<options>`\n- **Options**: {options_message}" if options else f"\n- **Description**: `{description}`\n- **Usage**: `/{command.name}`",
-					inline = False
-				)
-			view.message = await interaction.response.send_message(embed = embed, view = view, ephemeral = True)
-
-		elif module.lower() == "league of legends" or module.lower() == "lol":
-			view = ReturnButtonView(interaction.message)
-			embed = nextcord.Embed(
-				title = f"League Of Legends Commands:",
-				color = nextcord.Color.blurple(),
-				timestamp = datetime.now(tz = timezone("US/Eastern"))
-			).set_author(
-				name = "Killer Bot | Help",
-				icon_url = bot.user.avatar.url
-			)
-			for command in bot.get_cog("League Of Legends").application_commands:
-				description = command.description
-				options = command.options
-				if not description or description is None or description == "":
-					description = "No description"
-
-				if not options or options is None or options == "":
-					options_message = ""
-				
-				options_message = ""
-				i = 0
-				for option_name, option_content in options.items():
-					i += 1
-					options_message += f"\n    *{i}.* **{option_name}**: `{option_content.description}` {'(**Required**)' if option_content.required else ''}"
-
-				embed.add_field(
-					name = f"> {command.name.title()} Command",
-					value = f"\n- **Description**: `{description}`\n- **Usage**: `/{command.name}`" + f" `<options>`\n- **Options**: {options_message}" if options else f"\n- **Description**: `{description}`\n- **Usage**: `/{command.name}`",
-					inline = False
-				)
-			view.message = await interaction.response.send_message(embed = embed, view = view, ephemeral = True)
-
-		elif module.lower() == "music":
-			view = ReturnButtonView(interaction.message)
-			embed = nextcord.Embed(
-				title = f"Music Commands:",
-				color = nextcord.Color.blurple(),
-				timestamp = datetime.now(tz = timezone("US/Eastern"))
-			).set_author(
-				name = "Killer Bot | Help",
-				icon_url = bot.user.avatar.url
-			)
-			for command in bot.get_cog("Music").application_commands:
-				description = command.description
-				options = command.options
-				if not description or description is None or description == "":
-					description = "No description"
-
-				if not options or options is None or options == "":
-					options_message = ""
-				
-				options_message = ""
-				i = 0
-				for option_name, option_content in options.items():
-					i += 1
-					options_message += f"\n    *{i}.* **{option_name}**: `{option_content.description}` {'(**Required**)' if option_content.required else ''}"
-
-				embed.add_field(
-					name = f"> {command.name.title()} Command",
-					value = f"\n- **Description**: `{description}`\n- **Usage**: `/{command.name}`" + f" `<options>`\n- **Options**: {options_message}" if options else f"\n- **Description**: `{description}`\n- **Usage**: `/{command.name}`",
-					inline = False
-				)
-			view.message = await interaction.response.send_message(embed = embed, view = view, ephemeral = True)
-
-		elif module.lower() == "variety":
-			view = ReturnButtonView(interaction.message)
-			embed = nextcord.Embed(
-				title = f"Variety Commands:",
-				color = nextcord.Color.blurple(),
-				timestamp = datetime.now(tz = timezone("US/Eastern"))
-			).set_author(
-				name = "Killer Bot | Help",
-				icon_url = bot.user.avatar.url
-			)
-			for command in bot.get_cog("Variety").application_commands:
-				description = command.description
-				options = command.options
-				if not description or description is None or description == "":
-					description = "No description"
-
-				if not options or options is None or options == "":
-					options_message = ""
-				
-				options_message = ""
-				i = 0
-				for option_name, option_content in options.items():
-					i += 1
-					options_message += f"\n    *{i}.* **{option_name}**: `{option_content.description}` {'(**Required**)' if option_content.required else ''}"
-
-				embed.add_field(
-					name = f"> {command.name.title()} Command",
-					value = f"\n- **Description**: `{description}`\n- **Usage**: `/{command.name}`" + f" `<options>`\n- **Options**: {options_message}" if options else f"\n- **Description**: `{description}`\n- **Usage**: `/{command.name}`",
-					inline = False
-				)
-			view.message = await interaction.response.send_message(embed = embed, view = view, ephemeral = True)
+		view.message = await interaction.response.send_message(embed = embed, view = view, ephemeral = True)
 
 @help.on_autocomplete("module")
 async def get_modules(interaction : nextcord.Interaction, module : str):
