@@ -1,458 +1,445 @@
-from datetime import datetime, timedelta
-import nextcord, wavelink
-from pytz import timezone
-from nextcord.ext import commands
+import asyncio
+import nextcord
+import wavelink
 
-from helpers.config import MAIN_GUILD_ID, TESTING_GUILD_ID, LAVALINK_HOST, LAVALINK_PORT, LAVALINK_PASSWORD
+from nextcord.ext import commands, application_checks
+from nextcord.abc import GuildChannel
 
-# Panel View
+from helpers.config import LAVALINK_HOST, LAVALINK_PASSWORD, LAVALINK_PORT, MAIN_GUILD_ID, TESTING_GUILD_ID
+from helpers.logger import Logger
 
-class Panel(nextcord.ui.View):
-
-	# Panel Constructor
-
-	def __init__(self, vc, ctx, bot):
-		super().__init__(timeout = None)
-		self.vc = vc
-		self.ctx = ctx
-		self.bot = bot
-
-	# Timeout Event
-
-	async def on_timeout(self):
-		for child in self.children:
-			child.disabled = True
-
-		await self.message.edit(view = self)
-
-	# Pause / Resume Button
-
-	@nextcord.ui.button(label = "Pause / Resume", style = nextcord.ButtonStyle.blurple)
-	async def pause_resume_callback(self, button : nextcord.ui.Button, interaction : nextcord.Interaction):
-		if not interaction.user == self.ctx.author:
-			return await interaction.response.send_message("You can't do that. Run the command yourself to use these buttons.", ephemeral = True)
-
-		for child in self.children:
-			child.disabled = False
-
-		if self.vc.is_paused():
-			await self.vc.resume()
-			await interaction.message.edit(content = "▶ Resumed", view = self)
-		else:
-			await self.vc.pause()
-			await interaction.message.edit(content = "⏸ Paused", view = self)
-
-	# Queue Button
-
-	@nextcord.ui.button(label = "Queue", style = nextcord.ButtonStyle.blurple)
-	async def queue(self, button: nextcord.ui.Button, interaction: nextcord.Interaction):
-		if not interaction.user == self.ctx.author:
-			return await interaction.response.send_message("You can't do that. Run the command yourself to use these buttons.", ephemeral = True)
-
-		for child in self.children:
-			child.disabled = False
-
-		button.disabled = True
-
-		if self.vc.queue.is_empty:
-			return await interaction.response.send_message("Queue is empty. Add tracks to queue using `k!play`.", ephemeral = True)
-	
-		embed = nextcord.Embed(title = "Queue")
-
-		embed.set_author(name = "Killer Bot | Music", icon_url = self.bot.user.avatar.url)
-
-		queue = self.vc.queue.copy()
-		songCount = 0
-
-		for song in queue:
-			songCount += 1
-			embed.add_field(name = f"{str(songCount)}) {song}", value = u"\u2063", inline = False)
-
-		await interaction.message.edit(embed = embed, view = self)
-
-	# Skip Button
-
-	@nextcord.ui.button(label = "Skip", style = nextcord.ButtonStyle.blurple)
-	async def skip(self, button: nextcord.ui.Button, interaction: nextcord.Interaction):
-		if not interaction.user == self.ctx.author:
-			return await interaction.response.send_message("You can't do that. Run the command yourself to use these buttons.", ephemeral = True)
-
-		for child in self.children:
-			child.disabled = False
-
-		button.disabled = True
-		if self.vc.queue.is_empty:
-			return await interaction.response.send_message("Queue is empty. Add tracks to queue using `k!play`.", ephemeral = True)
-
-		try:
-			next_song = self.vc.queue.get()
-			await self.vc.play(next_song)
-			await interaction.message.edit(content = f"Now Playing `{next_song}`", view = self)
-
-		except Exception:
-			return await interaction.response.send_message("Queue is empty. Add tracks to queue using `k!play`.", ephemeral = True)
-
-	# Disconnect Button
-
-	@nextcord.ui.button(label = "Disconnect", style = nextcord.ButtonStyle.red)
-	async def disconnect_callback(self, button : nextcord.ui.Button, interaction : nextcord.Interaction):
-		if not interaction.user == self.ctx.author:
-			return await interaction.response.send_message("You can't do that. Run the command yourself to use these buttons.", ephemeral = True)
-
-		await self.vc.disconnect()
-
-		for child in self.children:
-			child.disabled = True
-
-		await interaction.message.edit(content = "❌ Disconnected.", view = self)
+logger = Logger()
 
 # Music Cog
-
 class Music(commands.Cog):
 
 	# Music Constructor
-
-	def __init__(self, bot : commands.Bot):
+	def __init__(self, bot: commands.Bot):
 		self.bot = bot
-		# bot.loop.create_task(self.node_connect())
-
-	# Node Ready Event
-
-	@commands.Cog.listener()
-	async def on_wavelink_node_ready(self, node : wavelink.Node):
-		print(f"Node {node.identifier} is ready to use!")
-
-	# Connect Node Function
-
-	async def node_connect(self):
+		self.queue = []
+		self.position = 0
+		self.repeat = False
+		self.repeat_mode = "NONE"
+		self.playing_text_channel = 0
+		bot.loop.create_task(self.create_nodes())
+	
+	# Create Nodes Function
+	async def create_nodes(self):
 		await self.bot.wait_until_ready()
-		await wavelink.NodePool.create_node(bot = self.bot, host = LAVALINK_HOST, port = LAVALINK_PORT, password = LAVALINK_PASSWORD, https = True)
+		await wavelink.NodePool.create_node(bot = self.bot, host = LAVALINK_HOST, port = LAVALINK_PORT, password = LAVALINK_PASSWORD, https = False)
 
-	# On Track End Event
-
+	# Wavelink Node Ready Event
 	@commands.Cog.listener()
-	async def on_wavelink_track_end(self, player: wavelink.Player, track: wavelink.YouTubeTrack, reason):
-		ctx = player.ctx
-		vc: player = ctx.voice_client
-		
-		if vc.loop:
-			await ctx.send(f"Now playing: {track.title}")
-			return await vc.play(track)
+	async def on_wavelink_node_ready(self, node: wavelink.Node):
+		logger.info(f"Node <{node.identifier}> is now Ready!")
 
-		if vc.queue.is_empty:
-			return
+	# Wavelink Track Start Event
+	@commands.Cog.listener()
+	async def on_wavelink_track_start(self, player: wavelink.Player, track: wavelink.Track):
+		try:
+			self.queue.pop(0)
+		except:
+			pass
 
-		next_song = vc.queue.get()
+	# Wavelink Track Start Event
+	@commands.Cog.listener()
+	async def on_wavelink_track_end(self, player: wavelink.Player, track: wavelink.Track, reason):
+		if str(reason) == "FINISHED":
+			if not len(self.queue) == 0:
+				next_track: wavelink.Track = self.queue[0]
+				channel = self.bot.get_channel(self.playing_text_channel)
 
-		await vc.play(next_song)
-		await ctx.send(f"Now playing: {next_song.title}")
-
-	# Play Command	
-
-	@commands.command(description = "Play a track.")
-	async def play(self, ctx : commands.Context, *, search : wavelink.YouTubeTrack):
-		if not ctx.voice_client:
-			vc : wavelink.Player = await ctx.author.voice.channel.connect(cls = wavelink.Player)
-
-		elif not getattr(ctx.author.voice, "channel", None):
-			return await ctx.send("You are not in a voice channel.")
-			
+				try:
+					await player.play(next_track)
+				except:
+					return await channel.send(
+						embed = nextcord.Embed(
+							title = f"Something went wrong while playing **{next_track.title}**",
+							color=nextcord.Color.from_rgb(255, 255, 255
+						)
+					)
+				)
+				
+				await channel.send(
+					embed = nextcord.Embed(
+						title = f"Now playing: {next_track.title}", 
+						color=nextcord.Color.from_rgb(255, 255, 255)
+					)
+				)
+			else:
+				pass
 		else:
-			vc: wavelink.Player = ctx.voice_client
+			logger.info(reason)
+	
+	# Join Command
+	@nextcord.slash_command(name = "join", description = "The bot joins to the specified voice channel or your current voice channel.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
+	async def join_command(
+		self, 
+		interaction: nextcord.Interaction, 
+		channel: GuildChannel = nextcord.SlashOption(
+			name = "channel",
+			description = "Channel that the bot is gonna join.",
+			required = False,
+			channel_types = [nextcord.ChannelType.voice]
+		)
+	):
+		if channel is None:
+			channel = interaction.user.voice.channel
+		
+		node = wavelink.NodePool.get_node()
+		player = node.get_player(interaction.guild)
 
-		if vc.queue.is_empty and not vc.is_playing():
-			view = Panel(vc, ctx, self.bot)
-			await vc.play(search)	
+		if player is not None:
+			if player.is_connected():
+				return await interaction.send("bot is already connected to a voice channel")
+		
+		await channel.connect(cls = wavelink.Player)
+		embed = nextcord.Embed(title = f"Connected to {channel.name}", color = nextcord.Color.from_rgb(255, 255, 255))
+		await interaction.send(embed = embed)
 
+	# Leave Command
+	@nextcord.slash_command(name = "leave", description = "The bot leaves your voice channel.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
+	async def leave_command(self, interaction: nextcord.Interaction):
+		node = wavelink.NodePool.get_node()
+		player = node.get_player(interaction.guild)
+
+		if player is None:
+			return await interaction.send("bot is not connected to any voice channel")
+		
+		await player.disconnect()
+		embed = nextcord.Embed(title = "Disconnected", color = nextcord.Color.from_rgb(255, 255, 255))
+		await interaction.send(embed = embed)
+	
+	# Play Command
+	@nextcord.slash_command(name = "play", description = "Play a youtube track in the voice channel that the bot is connected.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
+	async def play_command(self, interaction: nextcord.Interaction, *, search: str = nextcord.SlashOption(name = "search", description = "The track that you want to play.", required = True)):
+		try:
+			search = await wavelink.YouTubeTrack.search(query=search, return_first=True)
+		except:
+			return await interaction.send(embed=nextcord.Embed(title="Something went wrong while searching for this track", color=nextcord.Color.from_rgb(255, 255, 255)))
+
+		node = wavelink.NodePool.get_node()
+		player = node.get_player(interaction.guild)
+
+		if not interaction.guild.voice_client:
+			vc: wavelink.Player = await interaction.user.voice.channel.connect(cls=wavelink.Player)
+		else:
+			vc: wavelink.Player = interaction.guild.voice_client
+		
+		if not vc.is_playing():
+			try:
+				await vc.play(search)
+			except:
+				return await interaction.send(
+					embed = nextcord.Embed(
+						title = "Something went wrong while playing this track", 
+						color = nextcord.Color.from_rgb(255, 255, 255)
+					)
+				)
+		else:
+			self.queue.append(search)
+
+		embed = nextcord.Embed(title = f"Added {search} To the queue", color = nextcord.Color.from_rgb(255, 255, 255))
+		await interaction.send(embed = embed)
+	
+	# Stop Command
+	@nextcord.slash_command(name = "stop", description = "Stop the track that's being played.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
+	async def stop_command(self, interaction: nextcord.Interaction):
+		node = wavelink.NodePool.get_node()
+		player = node.get_player(interaction.guild)
+
+		if player is None:
+			return await interaction.send("Bot is not connected to any voice channel")
+
+		self.queue.clear()
+		
+		if player.is_playing():
+			await player.stop()
+			embed = nextcord.Embed(title = "Playback Stoped", color = nextcord.Color.from_rgb(255, 255, 255))
+			return await interaction.send(embed = embed)
+		else:
+			return await interaction.send("Nothing Is playing right now")
+	
+	# Pause Command
+	@nextcord.slash_command(name = "pause", description = "Pause the current track.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
+	async def pause_command(self, interaction: nextcord.Interaction):
+		node = wavelink.NodePool.get_node()
+		player = node.get_player(interaction.guild)
+
+		if player is None:
+			return await interaction.send("Bot is not connected to any voice channel")
+		
+		if not player.is_paused():
+			if player.is_playing():
+				await player.pause()
+				embed = nextcord.Embed(title = "Playback Paused", color = nextcord.Color.from_rgb(255, 255, 255))
+				return await interaction.send(embed = embed)
+			else:
+				return await interaction.send("Nothing is playing right now")
+		else:
+			return await interaction.send("Playback is Already paused")
+	
+	# Resume Command
+	@nextcord.slash_command(name = "resume", description = "Resume the track that if it's paused.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
+	async def resume_command(self, interaction: nextcord.Interaction):
+		node = wavelink.NodePool.get_node()
+		player = node.get_player(interaction.guild)
+
+		if player is None:
+			return await interaction.send("bot is not connnected to any voice channel")
+		
+		if player.is_paused():
+			await player.resume()
+			embed = nextcord.Embed(title = "Playback resumed", color = nextcord.Color.from_rgb(255, 255, 255))
+			return await interaction.send(embed = embed)
+		else:
+			if not len(self.queue) == 0:
+				track: wavelink.Track = self.queue[0]
+				player.play(track)
+				return await interaction.send(embed = nextcord.Embed(title = f"Now playing: {track.title}"))
+			else:
+				return await interaction.send("Playback is not paused")
+
+	# Volume Command | Wavelink bug
+	@nextcord.slash_command(name = "volume", description = "Set the bot's volume. [BUG]", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
+	async def volume_command(self, interaction: nextcord.Interaction, to: int):
+		if to > 100:
+			return await interaction.send("Volume should be between 0 and 100")
+		elif to < 1:
+			return await interaction.send("Volume should be between 0 and 100")
+
+		node = wavelink.NodePool.get_node()
+		player = node.get_player(interaction.guild)
+
+		await player.set_volume(to)
+		embed = nextcord.Embed(title = f"Changed Volume to {to}", color = nextcord.Color.from_rgb(255, 255, 255))
+		await interaction.send(embed = embed)
+
+	# Play Now Command
+	@nextcord.slash_command(name = "playnow", description = "Play a track, ignoring the queue.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
+	@application_checks.has_permissions(administrator = True)
+	async def play_now_command(self, interaction: nextcord.Interaction, *, search: str = nextcord.SlashOption(name = "search", description = "The track that you want to play.", required = True)):
+		try:
+			search = await wavelink.YouTubeTrack.search(query=search, return_first=True)
+		except:
+			return await interaction.send(
+				embed = nextcord.Embed(
+					title = "Something went wrong while searching for this track", 
+					color = nextcord.Color.from_rgb(255, 255, 255)
+				)
+			)
+		
+		node = wavelink.NodePool.get_node()
+		player = node.get_player(interaction.guild)
+
+		if not interaction.guild.voice_client:
+			vc: wavelink.Player = await interaction.user.voice.channel(cls=wavelink.Player)
+			await player.connect(interaction.user.voice.channel)
+		else:
+			vc: wavelink.Player = interaction.guild.voice_client
+
+		try:
+			await vc.play(search)
+		except:
+			return await interaction.send(
+				embed = nextcord.Embed(
+					title = "Something went wrong while playing this track", 
+					color = nextcord.Color.from_rgb(255, 255, 255)
+				)
+			)
+		await interaction.send(
 			embed = nextcord.Embed(
-				title = f"▶ Playing `{search.title}`",
-				description = f"Author: {search.author}",
-				color = nextcord.Color.green(),
-				timestamp = datetime.now(tz = timezone("US/Eastern"))
+				title = f"Playing: **{search.title}** Now", 
+				color = nextcord.Color.from_rgb(255, 255, 255)
+			)
+		)
+
+	# Now Playing Command
+	@nextcord.slash_command(name = "nowplaying", description = "See the track that's being played.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
+	async def now_playing_command(self, interaction: nextcord.Interaction):
+		node = wavelink.NodePool.get_node()
+		player = node.get_player(interaction.guild)
+
+		if player is None:
+			return await interaction.send("Bot is not connected to any voice channel")
+
+		if player.is_playing():
+			embed = nextcord.Embed(
+				title = f"Now Playing: {player.track}",
+				color = nextcord.Color.from_rgb(255, 255, 255)
 			)
 
-			embed.set_author(name = "Killer Bot | Music", icon_url = self.bot.user.avatar.url)
-			embed.set_footer(text = f"Requested by {ctx.author}", icon_url = ctx.author.avatar.url)
-			embed.set_thumbnail(url = search.thumbnail)
-			embed.set_image(url = search.thumbnail)
+			t_sec = int(player.track.length)
+			hour = int(t_sec/3600)
+			min = int((t_sec%3600)/60)
+			sec = int((t_sec%3600)%60)
+			length = f"{hour}hr {min}min {sec}sec" if not hour == 0 else f"{min}min {sec}sec"
 
-			view.message = await ctx.send(embed = embed, view = view)
+			embed.add_field(name = "Artist", value = player.track.info['author'], inline = False)
+			embed.add_field(name = "Length", value = f"{length}", inline = False)
 
+			return await interaction.send(embed = embed)
 		else:
-			await vc.queue.put_wait(search)
-			await ctx.send(f'Added `{search.title}` to the queue...')
+			await interaction.send("Nothing is playing right now")
 
-		vc.ctx = ctx
+	# Search Command
+	@nextcord.slash_command(name = "search", description = "Search the specified track on youtube and return 5 entries.")
+	async def search_command(self, interaction: nextcord.Interaction, *, search: str = nextcord.SlashOption(name = "search", description = "The track that you want to search.", required = True)):
 		try:
-			if vc.loop: return
-		except Exception:
-			setattr(vc, "loop", False)
-
-	# Pause Command
-
-	@commands.command(description = "Pause a track.")
-	async def pause(self, ctx : commands.Context):
-		if not ctx.voice_client:
-			return await ctx.send("I'm not in a voice channel.")
-
-		elif not getattr(ctx.author.voice, "channel", None):
-			return await ctx.send("You are not in a voice channel.")
-			
-		else:
-			vc: wavelink.Player = ctx.voice_client
-
-		if not vc.is_playing():
-			return await ctx.send("Play a track before try to pause something.")
-
-		await vc.pause()
-		await ctx.send(embed = nextcord.Embed(
-			description = f"⏸ Track is now paused.",
-			color = nextcord.Color.red(),
-			timestamp = datetime.now(tz = timezone("US/Eastern"))
-		).set_author(
-			name = "Killer Bot | Music", 
-			icon_url = self.bot.user.avatar.url
-		).set_footer(
-			text = f"Requested by {ctx.author}",
-			icon_url = ctx.author.avatar.url
-		)
-	)
-
-	# Resume Command
-		
-	@commands.command(description = "Resume a track.")
-	async def resume(self, ctx : commands.Context):
-		if not ctx.voice_client:
-			return await ctx.send("I'm not in a voice channel.")
-
-		elif not getattr(ctx.author.voice, "channel", None):
-			return await ctx.send("You are not in a voice channel.")
-			
-		else:
-			vc: wavelink.Player = ctx.voice_client
-
-		if not vc.is_playing():
-			return await ctx.send("Track is not paused.")
-		
-		await vc.resume()
-		await ctx.send(embed = nextcord.Embed(
-			description = f"▶ Track is now resumed.",
-			color = nextcord.Color.red(),
-			timestamp = datetime.now(tz = timezone("US/Eastern"))
-		).set_author(
-			name = "Killer Bot | Music", 
-			icon_url = self.bot.user.avatar.url
-		).set_footer(
-			text = f"Requested by {ctx.author}",
-			icon_url = ctx.author.avatar.url
-		)
-	)
-
-	# Skip Command
-
-	@commands.command(description = "Skip to the next track.")
-	async def skip(self, ctx: commands.Context):
-		if not ctx.voice_client:
-			return await ctx.send("I'm not in a voice channel.")
-
-		elif not getattr(ctx.author.voice, "channel", None):
-			return await ctx.send("You are not in a voice channel.")
-			
-		else:
-			vc: wavelink.Player = ctx.voice_client
-			
-		if not vc.is_playing():
-			return await ctx.send("Play a track before try to skip something.")
-		
-		try:
-			next_song = vc.queue.get()
-
-			await vc.play(next_song)
-			return await ctx.send(f"Now Playing `{next_song}`")		
-
-		except Exception:
-			await vc.stop()
-			return await ctx.send("⏹ Stopped because queue is empty.")
-
-	# Stop Command
-
-	@commands.command(description = "Stop a track.")
-	async def stop(self, ctx : commands.Context):
-		if not ctx.voice_client:
-			return await ctx.send("I'm not in a voice channel.")
-
-		elif not getattr(ctx.author.voice, "channel", None):
-			return await ctx.send("You are not in a voice channel.")
-			
-		else:
-			vc: wavelink.Player = ctx.voice_client
-
-		if not vc.is_playing():
-			return await ctx.send("Play a track before try to stop something.")
-
-		await vc.stop()
-		await ctx.send(embed = nextcord.Embed(
-			description = f"⏹ Track is now stopped.",
-			color = nextcord.Color.red(),
-			timestamp = datetime.now(tz = timezone("US/Eastern"))
-		).set_author(
-			name = "Killer Bot | Music", 
-			icon_url = self.bot.user.avatar.url
-		).set_footer(
-			text = f"Requested by {ctx.author}",
-			icon_url = ctx.author.avatar.url
-		))
-
-	# Disconnect Command
-
-	@commands.command(description = "Disconnect from voice.")
-	async def disconnect(self, ctx : commands.Context):
-		if not ctx.voice_client:
-			return await ctx.send("I'm not in a voice channel.")
-
-		elif not getattr(ctx.author.voice, "channel", None):
-			return await ctx.send("You are not in a voice channel.")
-			
-		else:
-			vc: wavelink.Player = ctx.voice_client
-
-		await vc.disconnect()
-		await ctx.send(embed = nextcord.Embed(
-			description = f"❌ Disconnected from {ctx.author.voice.channel}.",
-			color = nextcord.Color.red(),
-			timestamp = datetime.now(tz = timezone("US/Eastern"))
-		).set_author(
-			name = "Killer Bot | Music", 
-			icon_url = self.bot.user.avatar.url
-		).set_footer(
-			text = f"Requested by {ctx.author}",
-			icon_url = ctx.author.avatar.url
-		))
-
-	# Loop Command
-
-	@commands.command(description = "Loop a track.")
-	async def loop(self, ctx: commands.Context):
-		if not ctx.voice_client:
-			return await ctx.send("I'm not in a voice channel.")
-
-		elif not getattr(ctx.author.voice, "channel", None):
-			return await ctx.send("You are not in a voice channel.")
-
-		vc: wavelink.Player = ctx.voice_client
-
-		if not vc.is_playing():
-			return await ctx.send("Play a track before try to loop something.")
-		
-		try: 
-			vc.loop ^= True
-
+			tracks = await wavelink.YouTubeTrack.search(query = search)
 		except:
-			setattr(vc, "loop", False)
+			return await interaction.send(embed = nextcord.Embed(title = "Something went wrong while searching for this track", color=nextcord.Color.from_rgb(255, 255, 255)))
 
-		if vc.loop:
-			return await ctx.send("🔁 Loop is now enabled.")
-
-		else:
-			return await ctx.send("🔁 Loop is now disabled.")
-
-	# Queue Command
-
-	@commands.command(description = "Show the track queue.")
-	async def queue(self, ctx: commands.Context):
-		if not ctx.voice_client:
-			return await ctx.send("I'm not in a voice channel.")
-
-		elif not getattr(ctx.author.voice, "channel", None):
-			return await ctx.send("You are not in a voice channel.")
-		
-		vc: wavelink.Player = ctx.voice_client
-
-		if vc.queue.is_empty:
-			return await ctx.send("Queue is empty. Add tracks to queue using `k!play`.")
-		
-		embed = nextcord.Embed(title = "Queue")
-
-		embed.set_author(name = "Killer Bot | Music", icon_url = self.bot.user.avatar.url)
-
-		queue = vc.queue.copy()
-		songCount = 0
-
-		for song in queue:
-			songCount += 1
-			embed.add_field(name = f"{str(songCount)}) {song}", value = u"\u2063", inline = False)
-			
-		await ctx.send(embed = embed)
-
-	# Clearqueue Command
-
-	@commands.command(description = "Clears track queue.")
-	async def clearqueue(self, ctx : commands.Context):
-		if not ctx.voice_client:
-			return await ctx.send("I'm not in a voice channel.")
-
-		elif not getattr(ctx.author.voice, "channel", None):
-			return await ctx.send("You are not in a voice channel.")
-		
-		vc: wavelink.Player = ctx.voice_client
-
-		if vc.queue.is_empty:
-			return await ctx.send("Queue is empty. Cannot clear anything.")
-
-		await ctx.send("Queue has been cleared.")
-		return vc.queue.clear()
-
-	# Volume Command
-
-	@commands.command(description = "Set bot's volume.")
-	async def volume(self, ctx: commands.Context, volume: int):
-		if not ctx.voice_client:
-			return await ctx.send("I'm not in a voice channel.")
-
-		elif not getattr(ctx.author.voice, "channel", None):
-			return await ctx.send("You are not in a voice channel.")
-			
-		else:
-			vc: wavelink.Player = ctx.voice_client
-
-		if not vc.is_playing():
-			return await ctx.send("Play something before try to set my volume.")
-		
-		if volume > 100:
-			return await ctx.send("🔊 Please select a volume lower than 100.")
-			
-		elif volume < 0:
-			return await ctx.send("🔊 Please select a volume higher than 0.")
-
-		await ctx.send(f"🔊 Set the volume to `{volume}%`")
-		return await vc.set_volume(volume)
-
-	@commands.command(description = "Show information about the current track.")
-	async def nowplaying(self, ctx: commands.Context):
-		if not ctx.voice_client:
-			return await ctx.send("I'm not in a voice channel.")
-
-		elif not getattr(ctx.author.voice, "channel", None):
-			return await ctx.send("You are not in a voice channel.")
-			
-		else:
-			vc: wavelink.Player = ctx.voice_client
-
-		if not vc.is_playing():
-			return await ctx.send("Nothing is playing.")
+		if tracks is None:
+			return await interaction.send("No tracks found")
 
 		embed = nextcord.Embed(
-			title = f"Now Playing {vc.track.title}", 
-			description = f"Artist: {vc.track.author}",
-			color = nextcord.Color.yellow()
-		).set_author(
-			name = "Killer Bot | Music",
-			icon_url = self.bot.user.avatar.url
+			title = "Select the track: ",
+			description = ("\n".join(f"**{i+1}. {t.title}**" for i, t in enumerate(tracks[:5]))),
+			color = nextcord.Color.from_rgb(255, 255, 255)
+		)
+		msg = await interaction.send(embed = embed)
+
+		emojis_list = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '❌']
+		emojis_dict = {
+			'1️⃣': 0,
+			"2️⃣": 1,
+			"3️⃣": 2,
+			"4️⃣": 3,
+			"5️⃣": 4,
+			"❌": -1
+		}
+
+		for emoji in list(emojis_list[:min(len(tracks), len(emojis_list))]):
+			await msg.add_reaction(emoji)
+
+		def check(res, user):
+			return(res.emoji in emojis_list and user == interaction.user and res.message.id == msg.id)
+
+		try:
+			reaction, _ = await self.bot.wait_for("reaction_add", timeout = 60.0, check = check)
+		except asyncio.TimeoutError:
+			await msg.delete()
+			return
+		else:
+			await msg.delete()
+
+		node = wavelink.NodePool.get_node()
+		player = node.get_player(interaction.guild)
+
+		try:
+			if emojis_dict[reaction.emoji] == -1: return
+			choosed_track = tracks[emojis_dict[reaction.emoji]]
+		except:
+			return
+
+		vc: wavelink.Player = interaction.guild.voice_client or await interaction.user.voice.channel.connect(cls=wavelink.Player)
+
+		if not player.is_playing() and not player.is_paused():
+			try:
+				await vc.play(choosed_track)
+			except:
+				return await interaction.send(
+					embed = nextcord.Embed(
+						title = "Something went wrong while playing this track", 
+						color = nextcord.Color.from_rgb(255, 255, 255)
+						)
+					)
+		else:
+			self.queue.append(choosed_track)
+		
+		await interaction.send(
+			embed = nextcord.Embed(
+				title = f"Added {choosed_track.title} to the queue", 
+				color = nextcord.Color.from_rgb(255, 255, 255)
+			)
 		)
 
-		embed.add_field(name = "Duration", value = f"`{str(timedelta(seconds = vc.track.length))}`")
+	# Skip Command
+	@nextcord.slash_command(name = "skip", description = "Skip the current track.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
+	async def skip_command(self, interaction: nextcord.Interaction):
+		node = wavelink.NodePool.get_node()
+		player = node.get_player(interaction.guild)
 
-		return await ctx.send(embed = embed)
+		if not len(self.queue) == 0:
+			next_track: wavelink.Track = self.queue[0]
+			try:
+				await player.play(next_track)
+			except:
+				return await interaction.send(
+					embed = nextcord.Embed(
+						title = "Something went wrong while playing this track", 
+						color = nextcord.Color.from_rgb(255, 255, 255)
+					)
+				)
 
-def setup(bot):
+			await interaction.send(
+				embed = nextcord.Embed(
+					title = f"Now playing {next_track.title}", 
+					color = nextcord.Color.from_rgb(255, 255, 255)
+					)
+				)
+		else:
+			await interaction.send("The queue is empty")
+
+	# Queue Command
+	@nextcord.slash_command(name = "queue", description = "See the tracks that are queued.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
+	async def queue_command(self, interaction: nextcord.Interaction, *, search: str = nextcord.SlashOption(name = "search", required = False)):
+		node = wavelink.NodePool.get_node()
+		player = node.get_player(interaction.guild)
+		
+		if search is None:
+			if not len(self.queue) == 0:
+				embed = nextcord.Embed(
+					title = f"Now playing: {player.track}" if player.is_playing else "Queue: ",
+					description = "\n".join(f"**{i+1}. {track}**" for i, track in enumerate(self.queue[:10])) if not player.is_playing else "**Queue: **\n"+"\n".join(f"**{i+1}. {track}**" for i, track in enumerate(self.queue[:10])),
+					color = nextcord.Color.from_rgb(255, 255, 255)
+				)
+
+				return await interaction.send(embed = embed)
+			else:
+				return await interaction.send(
+					embed = nextcord.Embed(
+						title = "The queue is empty", 
+						color = nextcord.Color.from_rgb(255, 255, 255)
+						)
+					)
+		else:
+			try:
+				track = await wavelink.YouTubeTrack.search(query = search, return_first = True)
+			except:
+				return await interaction.send(
+					embed = nextcord.Embed(
+						title = "Something went wrong while searching for this track", 
+						color = nextcord.Color.from_rgb(255, 255, 255)
+						)
+					)
+			
+			if not interaction.guild.voice_client:
+				vc: wavelink.Player = await interaction.user.voice.channel(cls = wavelink.Player)
+				await player.connect(interaction.user.voice.channel)
+			else:
+				vc: wavelink.Player = interaction.guild.voice_client
+			
+			if not vc.is_playing():
+				try:
+					await vc.play(track)
+				except:
+					return await interaction.send(
+						embed = nextcord.Embed(
+							title = "Something went wrong while playing this track", 
+							color = nextcord.Color.from_rgb(255, 255, 255)
+						)
+					)
+			else:
+				self.queue.append(track)
+			
+			await interaction.send(
+				embed = nextcord.Embed(
+					title = f"Added {track.title} to the queue", 
+					color = nextcord.Color.from_rgb(255, 255, 255)
+					)
+				)          
+
+def setup(bot: commands.Bot):
 	bot.add_cog(Music(bot))
