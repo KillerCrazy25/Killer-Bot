@@ -55,15 +55,14 @@ class Music(commands.Cog):
 					return await channel.send(
 						embed = nextcord.Embed(
 							title = f"Something went wrong while playing **{next_track.title}**",
-							color=nextcord.Color.from_rgb(255, 255, 255
+							color = nextcord.Color.dark_red()
 						)
 					)
-				)
 				
 				await channel.send(
 					embed = nextcord.Embed(
 						title = f"Now playing: {next_track.title}", 
-						color=nextcord.Color.from_rgb(255, 255, 255)
+						color = nextcord.Color.blurple()
 					)
 				)
 			else:
@@ -91,10 +90,13 @@ class Music(commands.Cog):
 
 		if player is not None:
 			if player.is_connected():
-				return await interaction.send("bot is already connected to a voice channel")
+				return await interaction.send("Bot is already connected to a voice channel")
 		
 		await channel.connect(cls = wavelink.Player)
-		embed = nextcord.Embed(title = f"Connected to {channel.name}", color = nextcord.Color.from_rgb(255, 255, 255))
+		embed = nextcord.Embed(
+			title = f"Connected to {channel.name}", 
+			color = nextcord.Color.blurple()
+		)
 		await interaction.send(embed = embed)
 
 	# Leave Command
@@ -104,10 +106,13 @@ class Music(commands.Cog):
 		player = node.get_player(interaction.guild)
 
 		if player is None:
-			return await interaction.send("bot is not connected to any voice channel")
+			return await interaction.send("Bot is not connected to any voice channel")
 		
 		await player.disconnect()
-		embed = nextcord.Embed(title = "Disconnected", color = nextcord.Color.from_rgb(255, 255, 255))
+		embed = nextcord.Embed(
+			title = "Disconnected", 
+			color = nextcord.Color.dark_blue()
+		)
 		await interaction.send(embed = embed)
 	
 	# Play Command
@@ -116,7 +121,12 @@ class Music(commands.Cog):
 		try:
 			search = await wavelink.YouTubeTrack.search(query=search, return_first=True)
 		except:
-			return await interaction.send(embed=nextcord.Embed(title="Something went wrong while searching for this track", color=nextcord.Color.from_rgb(255, 255, 255)))
+			return await interaction.send(
+				embed = nextcord.Embed(
+					title = "Something went wrong while searching for this track", 
+					color = nextcord.Color.dark_red()
+				)
+			)
 
 		node = wavelink.NodePool.get_node()
 		player = node.get_player(interaction.guild)
@@ -133,13 +143,13 @@ class Music(commands.Cog):
 				return await interaction.send(
 					embed = nextcord.Embed(
 						title = "Something went wrong while playing this track", 
-						color = nextcord.Color.from_rgb(255, 255, 255)
+						color = nextcord.Color.dark_red()
 					)
 				)
 		else:
 			self.queue.append(search)
 
-		embed = nextcord.Embed(title = f"Added {search} To the queue", color = nextcord.Color.from_rgb(255, 255, 255))
+		embed = nextcord.Embed(title = f"Added {search} To the queue", color = nextcord.Color.blurple())
 		await interaction.send(embed = embed)
 	
 	# Stop Command
@@ -155,10 +165,10 @@ class Music(commands.Cog):
 		
 		if player.is_playing():
 			await player.stop()
-			embed = nextcord.Embed(title = "Playback Stoped", color = nextcord.Color.from_rgb(255, 255, 255))
+			embed = nextcord.Embed(title = "Playback Stoped", color = nextcord.Color.gold())
 			return await interaction.send(embed = embed)
 		else:
-			return await interaction.send("Nothing Is playing right now")
+			return await interaction.send("Nothing is playing right now.")
 	
 	# Pause Command
 	@nextcord.slash_command(name = "pause", description = "Pause the current track.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
@@ -172,7 +182,7 @@ class Music(commands.Cog):
 		if not player.is_paused():
 			if player.is_playing():
 				await player.pause()
-				embed = nextcord.Embed(title = "Playback Paused", color = nextcord.Color.from_rgb(255, 255, 255))
+				embed = nextcord.Embed(title = "Playback Paused", color = nextcord.Color.gold())
 				return await interaction.send(embed = embed)
 			else:
 				return await interaction.send("Nothing is playing right now")
@@ -186,17 +196,22 @@ class Music(commands.Cog):
 		player = node.get_player(interaction.guild)
 
 		if player is None:
-			return await interaction.send("bot is not connnected to any voice channel")
+			return await interaction.send("Bot is not connnected to any voice channel")
 		
 		if player.is_paused():
 			await player.resume()
-			embed = nextcord.Embed(title = "Playback resumed", color = nextcord.Color.from_rgb(255, 255, 255))
+			embed = nextcord.Embed(title = "Playback resumed", color = nextcord.Color.gold())
 			return await interaction.send(embed = embed)
 		else:
 			if not len(self.queue) == 0:
 				track: wavelink.Track = self.queue[0]
 				player.play(track)
-				return await interaction.send(embed = nextcord.Embed(title = f"Now playing: {track.title}"))
+				return await interaction.send(
+					embed = nextcord.Embed(
+						title = f"Now playing: {track.title}",
+						color = nextcord.Color.blurple()
+					)
+				)
 			else:
 				return await interaction.send("Playback is not paused")
 
@@ -212,7 +227,7 @@ class Music(commands.Cog):
 		player = node.get_player(interaction.guild)
 
 		await player.set_volume(to)
-		embed = nextcord.Embed(title = f"Changed Volume to {to}", color = nextcord.Color.from_rgb(255, 255, 255))
+		embed = nextcord.Embed(title = f"Changed Volume to {to}", color = nextcord.Color.blurple())
 		await interaction.send(embed = embed)
 
 	# Play Now Command
@@ -225,7 +240,7 @@ class Music(commands.Cog):
 			return await interaction.send(
 				embed = nextcord.Embed(
 					title = "Something went wrong while searching for this track", 
-					color = nextcord.Color.from_rgb(255, 255, 255)
+					color = nextcord.Color.blurple()
 				)
 			)
 		
@@ -244,13 +259,13 @@ class Music(commands.Cog):
 			return await interaction.send(
 				embed = nextcord.Embed(
 					title = "Something went wrong while playing this track", 
-					color = nextcord.Color.from_rgb(255, 255, 255)
+					color = nextcord.Color.dark_red()
 				)
 			)
 		await interaction.send(
 			embed = nextcord.Embed(
 				title = f"Playing: **{search.title}** Now", 
-				color = nextcord.Color.from_rgb(255, 255, 255)
+				color = nextcord.Color.blurple()
 			)
 		)
 
@@ -266,7 +281,7 @@ class Music(commands.Cog):
 		if player.is_playing():
 			embed = nextcord.Embed(
 				title = f"Now Playing: {player.track}",
-				color = nextcord.Color.from_rgb(255, 255, 255)
+				color = nextcord.Color.blurple()
 			)
 
 			t_sec = int(player.track.length)
@@ -296,7 +311,7 @@ class Music(commands.Cog):
 		embed = nextcord.Embed(
 			title = "Select the track: ",
 			description = ("\n".join(f"**{i+1}. {t.title}**" for i, t in enumerate(tracks[:5]))),
-			color = nextcord.Color.from_rgb(255, 255, 255)
+			color = nextcord.Color.blurple()
 		)
 		msg = await interaction.send(embed = embed)
 
@@ -342,7 +357,7 @@ class Music(commands.Cog):
 				return await interaction.send(
 					embed = nextcord.Embed(
 						title = "Something went wrong while playing this track", 
-						color = nextcord.Color.from_rgb(255, 255, 255)
+						color = nextcord.Color.dark_red()
 						)
 					)
 		else:
@@ -351,7 +366,7 @@ class Music(commands.Cog):
 		await interaction.send(
 			embed = nextcord.Embed(
 				title = f"Added {choosed_track.title} to the queue", 
-				color = nextcord.Color.from_rgb(255, 255, 255)
+				color = nextcord.Color.blurple()
 			)
 		)
 
@@ -369,14 +384,14 @@ class Music(commands.Cog):
 				return await interaction.send(
 					embed = nextcord.Embed(
 						title = "Something went wrong while playing this track", 
-						color = nextcord.Color.from_rgb(255, 255, 255)
+						color = nextcord.Color.dark_red()
 					)
 				)
 
 			await interaction.send(
 				embed = nextcord.Embed(
 					title = f"Now playing {next_track.title}", 
-					color = nextcord.Color.from_rgb(255, 255, 255)
+					color = nextcord.Color.blurple()
 					)
 				)
 		else:
@@ -393,7 +408,7 @@ class Music(commands.Cog):
 				embed = nextcord.Embed(
 					title = f"Now playing: {player.track}" if player.is_playing else "Queue: ",
 					description = "\n".join(f"**{i+1}. {track}**" for i, track in enumerate(self.queue[:10])) if not player.is_playing else "**Queue: **\n"+"\n".join(f"**{i+1}. {track}**" for i, track in enumerate(self.queue[:10])),
-					color = nextcord.Color.from_rgb(255, 255, 255)
+					color = nextcord.Color.blurple()
 				)
 
 				return await interaction.send(embed = embed)
@@ -401,7 +416,7 @@ class Music(commands.Cog):
 				return await interaction.send(
 					embed = nextcord.Embed(
 						title = "The queue is empty", 
-						color = nextcord.Color.from_rgb(255, 255, 255)
+						color = nextcord.Color.blurple()
 						)
 					)
 		else:
@@ -411,7 +426,7 @@ class Music(commands.Cog):
 				return await interaction.send(
 					embed = nextcord.Embed(
 						title = "Something went wrong while searching for this track", 
-						color = nextcord.Color.from_rgb(255, 255, 255)
+						color = nextcord.Color.dark_red()
 						)
 					)
 			
@@ -428,7 +443,7 @@ class Music(commands.Cog):
 					return await interaction.send(
 						embed = nextcord.Embed(
 							title = "Something went wrong while playing this track", 
-							color = nextcord.Color.from_rgb(255, 255, 255)
+							color = nextcord.Color.dark_red()
 						)
 					)
 			else:
@@ -437,7 +452,7 @@ class Music(commands.Cog):
 			await interaction.send(
 				embed = nextcord.Embed(
 					title = f"Added {track.title} to the queue", 
-					color = nextcord.Color.from_rgb(255, 255, 255)
+					color = nextcord.Color.blurple()
 					)
 				)          
 
