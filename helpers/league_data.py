@@ -377,3 +377,28 @@ REGIONS = [
 	"RU",
 	"TR"
 ]
+
+ROLES = [
+	"top",
+	"jungle",
+	"mid",
+	"adc",
+	"support"
+]
+
+RANKS = [
+	"platinum+",
+	"diamond+",
+	"diamond 2+",
+	"master+",
+	"all",
+	"challenger",
+	"grandmaster",
+	"master",
+	"diamond",
+	"platinum",
+	"gold",
+	"silver",
+	"bronze",
+	"iron"
+]
