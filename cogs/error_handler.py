@@ -5,7 +5,7 @@ from nextcord.ext import commands
 from datetime import datetime
 from pytz import timezone
 
-from helpers.embed_builder import EmbedBuilder
+from helpers.embedder import EmbedBuilder
 from helpers.config import ERROR_CHANNEL_ID, MAIN_GUILD_ID, TESTING_GUILD_ID, DEVELOPER_ID
 from helpers.logger import Logger
 

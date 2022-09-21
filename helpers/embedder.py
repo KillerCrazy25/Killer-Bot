@@ -1,5 +1,8 @@
+import arrow
+
 from nextcord.ext import commands
 from nextcord import Embed, Color, Asset, Member
+from cassiopeia import Match, Summoner
 
 from typing import (
 	Optional,
@@ -8,8 +11,11 @@ from typing import (
 )
 
 from helpers.config import *
+from helpers.league_utils import *
+
 from datetime import datetime
 from pytz import timezone
+
 
 # ModLogEmbedBuilder Class
 class EmbedBuilder:
@@ -136,4 +142,101 @@ class EmbedBuilder:
 				inline = False
 			)
 		
+		return embed
+
+	# Match Info Embed Builder
+	async def match_embed(self, match: Match, summoner: Summoner, region: str) -> Embed:
+		"""embed.set_footer(text = f"Requested by {interaction.user} • Match ID: {last_match.id}", icon_url = interaction.user.avatar.url)"""
+		# Getting teams and teams information
+		blue_team = get_match_teams(match.id, region)[0]
+		red_team = get_match_teams(match.id, region)[1]
+		blue_info = get_team_info(match.id, region, 100)
+		red_info = get_team_info(match.id, region, 200)
+		# Getting team's players
+		blue_team_players = get_team_players(blue_team)
+		red_team_players = get_team_players(red_team)
+		# Getting team's champions
+		blue_champions = get_team_champions(blue_team)
+		red_champions = get_team_champions(red_team)
+		# Getting team's bans
+		blue_bans = get_team_bans(blue_info)
+		red_bans = get_team_bans(red_info)
+		# Getting match queue and map
+		map_ = get_map_name(get_map_id(match.id, region))
+		queue = match.queue.value.replace("_", " ").title()
+
+		blue_stats = get_match_stats(match)[0]
+		red_stats = get_match_stats(match)[1]
+
+		participant = next(filter(lambda p: p.summoner.id == summoner.id, match.participants), None)
+
+		# Red team champions message
+		red_message = ""
+		for player, champion, stats in zip(red_team_players, red_champions, red_stats):
+			emoji = get_champion_emoji_by_id(str(champion.id))
+			pm = f"{emoji + ' | __**' + player.name + '**__' if player.name == summoner.name else emoji + ' | ' + player.name}"
+			sm = f"{'**' + str(stats.kills) + '**/**' + str(stats.deaths) + '**/**' + str(stats.assists) + '** | **' + str(stats.total_minions_killed) + ' cs** | **' + human_format(stats.total_damage_dealt_to_champions) + ' DMG**' if player.name == summoner.name else str(stats.kills) + '/' + str(stats.deaths) + '/' + str(stats.assists) + ' | ' + str(stats.total_minions_killed) + ' cs | ' + human_format(stats.total_damage_dealt_to_champions) + ' DMG'}"
+			red_message += f"{pm} ({sm})\n"
+		# Blue team champions message
+		blue_message = ""
+		for player, champion, stats in zip(blue_team_players, blue_champions, blue_stats):
+			emoji = get_champion_emoji_by_id(str(champion.id))
+			pm = f"{emoji + ' | __**' + player.name + '**__' if player.name == summoner.name else emoji + ' | ' + player.name}"
+			sm = f"{'**' + str(stats.kills) + '**/**' + str(stats.deaths) + '**/**' + str(stats.assists) + '** | **' + str(stats.total_minions_killed) + ' cs** | **' + human_format(stats.total_damage_dealt_to_champions) + ' DMG**' if player.name == summoner.name else str(stats.kills) + '/' + str(stats.deaths) + '/' + str(stats.assists) + ' | ' + str(stats.total_minions_killed) + ' cs | ' + human_format(stats.total_damage_dealt_to_champions) + ' DMG'}"
+			blue_message += f"{pm} ({sm})\n"
+		# Red team bans message
+		red_bans_message = ""
+		for ban in red_bans:
+			if ban != None:
+				emoji = get_champion_emoji_by_id(str(ban.id))
+				red_bans_message += f"{emoji} {ban.name}\n"
+			else:
+				red_bans_message += ""
+				continue
+		# Blue team bans message
+		blue_bans_message = ""
+		for ban in blue_bans:
+			if ban != None:
+				emoji = get_champion_emoji_by_id(str(ban.id))
+				blue_bans_message += f"{emoji} {ban.name}\n"
+			else:
+				blue_bans_message += ""
+				continue
+
+		# Creating embed
+		embed = Embed(
+			color = Color.blue() if participant.stats.win == True else Color.red()
+		)
+
+		# Summoner info field
+		embed.add_field(
+			name = "> Summoner Information", 
+			value = f"**Name:** `{summoner.name}`\n**Region:** `{region}`",
+			inline = False
+		)		
+		# Match info field
+		embed.add_field(
+			name = "> Match Information", 
+			value = f"**Map**: `{map_}`\n**Queue**: `{queue}`\n**Date**: <t:{arrow.get(match.creation).timestamp}> (<t:{arrow.get(match.creation).timestamp}:R>)\n**Duration**: `{match.duration}`\n**Result**: `{'Win' if participant.stats.win == True else 'Defeat'}`",
+			inline = False
+		)
+		# Bans info field
+		if match.queue in cass.data.RANKED_QUEUES:	
+			embed.add_field(
+				name = "> Blue Team Bans",
+				value = blue_bans_message,
+				inline = True
+			)
+			embed.add_field(
+				name = "> Red Team Bans",
+				value = red_bans_message,
+				inline = True
+			)
+		# Team fields
+		embed.add_field(name = "> Blue Team", value = blue_message, inline = False)
+		embed.add_field(name = "> Red Team", value = red_message, inline = False)
+		# Author, footer and thumbnail
+		embed.set_author(name = "Killer Bot | League Of Legends", icon_url = self.bot.user.avatar.url)
+		embed.set_thumbnail(url = summoner.profile_icon.url)
+
 		return embed

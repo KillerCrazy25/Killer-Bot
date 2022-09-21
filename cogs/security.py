@@ -8,7 +8,7 @@ from typing import (
 )
 
 from helpers.config import LOGS_CHANNEL_ID
-from helpers.embed_builder import EmbedBuilder
+from helpers.embedder import EmbedBuilder
 from helpers.utils import pad_base64
 
 LOG_MESSAGE = (
