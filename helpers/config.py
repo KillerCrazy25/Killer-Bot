@@ -48,9 +48,9 @@ MOD_ROLE_ID = config["role_ids"]["mod_role_id"]
 USER_ROLE_ID = config["role_ids"]["user_role_id"]
 
 # Lavalink Things
-LAVALINK_HOST = config["lavalink"]["host"]
-LAVALINK_PORT = config["lavalink"]["port"]
-LAVALINK_PASSWORD = config["lavalink"]["password"]
+LAVALINK_HOST = os.getenv("LAVALINK_HOST")
+LAVALINK_PORT = os.getenv("LAVALINK_PORT")
+LAVALINK_PASSWORD = os.getenv("LAVALINK_PASSWORD")
 
 # Cassiopeia Config
 CASSIOPEIA_CONFIG = { 
@@ -76,7 +76,7 @@ CASSIOPEIA_CONFIG = {
 	}, 
 	"logging": {
 		"print_calls": True,
-		"print_riot_api_key": False, 
+		"print_riot_api_key": True, 
 		"default": "WARNING", 
 		"core": "WARNING"
 	}
