@@ -45,20 +45,6 @@ class Parser:
 		except KeyError:
 			return "top"
 
-	def tierlist_role_parser(self, role: str):
-		roles = {
-			"top": "top-lane-tier-list",
-			"jungle": "jungle-tier-list",
-			"mid": "mid-lane-tier-list",
-			"adc": "adc-tier-list",
-			"support": "support-tier-list",
-			"all": "tier-list"
-		}
-		try:
-			return roles[role]
-		except KeyError:
-			return "tier-list"
-
 	# Function That Converts Normal Elo To Be U.GG Readed
 	def from_normal_to_gg(self, elo: Optional[str]):
 		values = {
@@ -84,7 +70,6 @@ class Parser:
 
 class LeagueScraper:
 	BASE_STATS_URL = "https://u.gg/lol/champions/{}/build/{}?region={}&rank={}"
-	BASE_TIERLIST_URL = "https://u.gg/lol/{}?region={}&rank={}"
 
 	def __init__(self, parser: Parser):
 		self.parser = parser
@@ -96,17 +81,6 @@ class LeagueScraper:
 		role = self.parser.role_parser(role)
 
 		return self.BASE_STATS_URL.format(champion, role, region, rank)
-
-	def _get_tierlist_url(self, region: str, elo: str, role: str):
-		region = self.parser.region_parser(region)
-		elo = self.parser.from_normal_to_gg(elo)
-		role = self.parser.tierlist_role_parser(role)
-
-		print(region)
-		print(elo)
-		print(role)
-
-		return self.BASE_TIERLIST_URL.format(role, region, elo)
 
 	def get_champion_analytics(self, champion: str = "annie", region: str = "NA", elo: str = "platinum+", role: str = "top") -> list:
 		"""
@@ -141,78 +115,3 @@ class LeagueScraper:
 		data = [div.text for div in divs]
 		
 		return data
-
-	def get_tierlist(self, region: str, elo: str, role: str):
-		"""
-		Returns a tierlist for the given region, tier and position
-
-		Parameters:
-			region: The region to analytics for.
-			elo: The elo to analytics for.
-			role: The role to analytics for.
-
-		Returns:
-			A list with the champion analytics with the next format:
-
-			[tier, winrate, rank, pickrate, banrate, matches]
-		
-		Example:
-			>>> parser = Parser()
-			>>> scraper = Scraper(parser)
-			>>> annie = scraper.get_tierlist('world', 'platinum+', 'mid', 10)
-			>>> print(annie)
-			['A', '51.57%', '15 / 57', '1.4%', '0.3%', '20,040']
-			>>> print(annie[2])
-			15 / 57
-		"""
-
-		url = self._get_tierlist_url(region = region, elo = elo, role = role)
-		r = self.session.get(url)
-		container = r.html.find(".rt-tbody", first = True)
-		print(container)
-		champ_div = container.find(".rt-tr")
-		print(champ_div)
-
-		ranks = []
-		champions = []
-		tiers = []
-		winrates = []
-		pickrates = []
-		banrates = []
-		matches = []
-
-		for div in champ_div:
-			rank = div.find("span").text
-			champion = div.find("a").text
-			tier = div.find("span").text
-			winrate = div.find("span").text
-			pickrate = div.find("span").text
-			banrate = div.find("span").text
-			match = div.find("span").text
-
-			ranks.append(rank)
-			champions.append(champion)
-			tiers.append(tier)
-			winrates.append(winrate)
-			pickrates.append(pickrate)
-			banrates.append(banrate)
-			matches.append(match)
-
-			data = {
-				"rank": ranks,
-				"champion": champions,
-				"tier": tiers,
-				"winrate": winrates,
-				"pickrate": pickrates,
-				"banrate": banrates,
-				"matches": matches
-			}
-
-		return data
-
-if __name__ == "__main__":
-	parser = Parser()
-	scraper = LeagueScraper(parser)
-	data = scraper.get_tierlist("world", "platinum+", "all")
-
-	print(data)
