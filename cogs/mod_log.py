@@ -1,10 +1,12 @@
 # Nextcord
 import nextcord
 from nextcord.ext import commands
+from db.read import get_modlog_channel
+from db.update import add_guild, add_modlog_channel
 
 # Helpers
 from helpers.config import *
-from helpers.embed_builder import EmbedBuilder
+from helpers.embedder import EmbedBuilder
 from helpers.utils import get_difference, get_difference_list, chunk
 from helpers.time import *
 from helpers.pastebin import paste
@@ -16,7 +18,7 @@ from pytz import timezone
 from dateutil.relativedelta import relativedelta
 
 # Typing
-from typing import Union
+from typing import Any, Union
 
 # Logger
 logger = Logger()
@@ -91,8 +93,6 @@ class ModLog(commands.Cog):
 		# Avoid errors
 		name = "None"
 		value = "None"
-
-		print(f"Key: {key}")
 
 		# Check name of the key
 		match key:
@@ -247,6 +247,23 @@ class ModLog(commands.Cog):
 		if not self.log_channel:
 			self.log_channel = self.bot.get_channel(LOGS_CHANNEL_ID)
 			logger.info(f"[Mod Log] Log channel setted.")
+
+	@nextcord.slash_command(name = "setlogchannel", description = "Set the channel where modlog is gonna be logged.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
+	async def setmodlogchannel(
+		self, 
+		interaction: nextcord.Interaction, 
+		channel: nextcord.abc.GuildChannel = nextcord.SlashOption(
+			name = "channel",
+			description = "The channel that you want to set.",
+			required = False,
+			channel_types = [nextcord.ChannelType.text]	
+		)
+	):
+		if not channel:
+			channel = interaction.channel
+
+		await add_modlog_channel(interaction.guild.id, channel.id)
+		await interaction.send(f"Set modlog channel to {channel.mention}")
 
 	# Channel Create Event
 	@commands.Cog.listener()
@@ -568,8 +585,6 @@ class ModLog(commands.Cog):
 		embed.add_field(name = "ID", value = f"```ini\nUser = {member.id}\nGuild = {member.guild.id}```", inline = False)
 
 		await self.log_channel.send(embed = embed)
-
-		print(member.guild.features)
 
 	# Guild Member Update Event
 	@commands.Cog.listener()
@@ -913,12 +928,6 @@ class ModLog(commands.Cog):
 					data = await self.handle_property(property, before, after) 
 
 					if data == None: continue 
-					
-					print("Name: " + data[0])
-					print("Value: " + data[1])
-
-					print(f"BEFORE PROPERTY: {before_properties[property]}")
-					print(f"AFTER PROPERTY: {after_properties[property]}")
 
 					embed.add_field(name = data[0] if data[0] else 'Unknown', value = data[1] if data[1] else 'Unknown', inline = False)
 
@@ -937,6 +946,10 @@ class ModLog(commands.Cog):
 		"""Log message delete event to mod log."""
 		if message.guild.id not in GUILD_IDS: return
 		if message.author.bot == True: return
+		channel_id = await get_modlog_channel(message.guild.id)
+		channel = self.bot.get_channel(channel_id[0])
+		print(channel)
+		print(type(channel))
 
 		# Embed Builder
 		builder = EmbedBuilder(self.bot)
@@ -954,7 +967,7 @@ class ModLog(commands.Cog):
 		embed.add_field(name = "Date", value = f"<t:{round(ts)}:F>", inline = False)
 		embed.add_field(name = "ID", value = f"```ini\nUser = {message.author.id}\nMessage = {message.id}```", inline = False)
 		
-		await self.log_channel.send(embed = embed)
+		await channel.send(embed = embed)
 	
 	# Message Edit Event
 	@commands.Cog.listener()
