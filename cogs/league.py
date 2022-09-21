@@ -11,11 +11,13 @@ from riotwatcher import LolWatcher
 from cassiopeia import *
 
 from nextcord.ext import commands
+from helpers.embedder import EmbedBuilder
 
 from helpers.utils import *
 from helpers.config import MAIN_GUILD_ID, TESTING_GUILD_ID, CASSIOPEIA_CONFIG, RIOT_TOKEN
 from helpers.logger import Logger
 from helpers.league_utils import *
+from helpers.scraper import Parser, LeagueScraper
 
 from datetime import datetime
 from pytz import timezone
@@ -174,104 +176,15 @@ class LeagueCommands(commands.Cog, name = "League Of Legends", description = "Le
 		if len(match_history) == 0:
 			await interaction.edit_original_message(content = "> The summoner you entered doesn't have any matches.")
 			return	
-		last_match : Match = match_history[0]
-		# Getting teams and teams information
-		blue_team = get_match_teams(last_match.id, region)[0]
-		red_team = get_match_teams(last_match.id, region)[1]
-		blue_info = get_team_info(last_match.id, region, 100)
-		red_info = get_team_info(last_match.id, region, 200)
-		# Getting team's players
-		blue_team_players = get_team_players(blue_team)
-		red_team_players = get_team_players(red_team)
-		# Getting team's champions
-		blue_champions = get_team_champions(blue_team)
-		red_champions = get_team_champions(red_team)
-		# Getting team's bans
-		blue_bans = get_team_bans(blue_info)
-		red_bans = get_team_bans(red_info)
-		# Getting match queue and map
-		map_ = get_map_name(get_map_id(last_match.id, region))
-		queue = last_match.queue.value.replace("_", " ").title()
+		last_match: Match = match_history[0]
 
-		blue_stats = get_match_stats(last_match)[0]
-		red_stats = get_match_stats(last_match)[1]
-
-		# get participant.id == summoner.id
-		participant = next(filter(lambda p: p.summoner.id == summoner.id, last_match.participants), None)
-
-		# Red team champions message
-		red_message = ""
-		for player, champion, stats in zip(red_team_players, red_champions, red_stats):
-			emoji = get_champion_emoji_by_id(str(champion.id))
-			pm = f"{emoji + ' | __**' + player.name + '**__' if player.name == summoner.name else emoji + ' | ' + player.name}"
-			sm = f"{'**' + str(stats.kills) + '**/**' + str(stats.deaths) + '**/**' + str(stats.assists) + '** | **' + str(stats.total_minions_killed) + ' cs** | **' + human_format(stats.total_damage_dealt_to_champions) + ' DMG**' if player.name == summoner.name else str(stats.kills) + '/' + str(stats.deaths) + '/' + str(stats.assists) + ' | ' + str(stats.total_minions_killed) + ' cs | ' + human_format(stats.total_damage_dealt_to_champions) + ' DMG'}"
-			red_message += f"{pm} ({sm})\n"
-		# Blue team champions message
-		blue_message = ""
-		for player, champion, stats in zip(blue_team_players, blue_champions, blue_stats):
-			emoji = get_champion_emoji_by_id(str(champion.id))
-			pm = f"{emoji + ' | __**' + player.name + '**__' if player.name == summoner.name else emoji + ' | ' + player.name}"
-			sm = f"{'**' + str(stats.kills) + '**/**' + str(stats.deaths) + '**/**' + str(stats.assists) + '** | **' + str(stats.total_minions_killed) + ' cs** | **' + human_format(stats.total_damage_dealt_to_champions) + ' DMG**' if player.name == summoner.name else str(stats.kills) + '/' + str(stats.deaths) + '/' + str(stats.assists) + ' | ' + str(stats.total_minions_killed) + ' cs | ' + human_format(stats.total_damage_dealt_to_champions) + ' DMG'}"
-			blue_message += f"{pm} ({sm})\n"
-		# Red team bans message
-		red_bans_message = ""
-		for ban in red_bans:
-			if ban != None:
-				emoji = get_champion_emoji_by_id(str(ban.id))
-				red_bans_message += f"{emoji} {ban.name}\n"
-			else:
-				red_bans_message += ""
-				continue
-		# Blue team bans message
-		blue_bans_message = ""
-		for ban in blue_bans:
-			if ban != None:
-				emoji = get_champion_emoji_by_id(str(ban.id))
-				blue_bans_message += f"{emoji} {ban.name}\n"
-			else:
-				blue_bans_message += ""
-				continue
-
-		# Creating embed
-		embed = nextcord.Embed(
-			color = nextcord.Color.blue() if participant.stats.win == True else nextcord.Color.red()
-		)
-
-		# Summoner info field
-		embed.add_field(
-			name = "> Summoner Information", 
-			value = f"**Name:** `{summoner.name}`\n**Region:** `{region}`",
-			inline = False
-		)		
-		# Match info field
-		embed.add_field(
-			name = "> Match Information", 
-			value = f"**Map**: `{map_}`\n**Queue**: `{queue}`\n**Date**: <t:{arrow.get(last_match.creation).timestamp}> (<t:{arrow.get(last_match.creation).timestamp}:R>)\n**Duration**: `{last_match.duration}`\n**Result**: `{'Win' if participant.stats.win == True else 'Defeat'}`",
-			inline = False
-		)
-		# Bans info field
-		if last_match.queue in cass.data.RANKED_QUEUES:	
-			embed.add_field(
-				name = "> Blue Team Bans",
-				value = blue_bans_message,
-				inline = True
-			)
-			embed.add_field(
-				name = "> Red Team Bans",
-				value = red_bans_message,
-				inline = True
-			)
-		# Team fields
-		embed.add_field(name = "> Blue Team", value = blue_message, inline = False)
-		embed.add_field(name = "> Red Team", value = red_message, inline = False)
-		# Author, footer and thumbnail
-		embed.set_author(name = "Killer Bot | League Of Legends", icon_url = self.bot.user.avatar.url)
+		builder = EmbedBuilder(self.bot)
+		embed = await builder.match_embed(last_match, summoner, region)	
 		embed.set_footer(text = f"Requested by {interaction.user} • Match ID: {last_match.id}", icon_url = interaction.user.avatar.url)
-		embed.set_thumbnail(url = summoner.profile_icon.url)
 
 		# Sending embed
 		await interaction.edit_original_message(content = None, embed = embed)
-		
+
 	# Champion List Command
 	@nextcord.slash_command(
 		name = "championlist",
@@ -335,33 +248,42 @@ class LeagueCommands(commands.Cog, name = "League Of Legends", description = "Le
 	)
 	async def champ(
 		self, 
-		interaction : nextcord.Interaction, 
-		champion : str = nextcord.SlashOption(
+		interaction: nextcord.Interaction, 
+		champion: str = nextcord.SlashOption(
 			name = "champion",
 			description = "Champion name",
 			required = True,
 			default = "Aatrox" 
 		), 
-		region : str = nextcord.SlashOption(
+		region: str = nextcord.SlashOption(
 			name = "region",
-			description = "Region",
-			required = True,
+			description = "Region filter.",
+			required = False,
 			default = "NA",
-			choices = REGIONS
+			choices = REGIONS + ["world"]
 		), 
-		elo : str = nextcord.SlashOption(
+		elo: str = nextcord.SlashOption(
 			name = "elo",
-			description = "Elo",
-			required = True,
-			default = "all"
+			description = "Elo filter.",
+			required = False,
+			default = "all",
+			choices = RANKS
+		),
+		role: str = nextcord.SlashOption(
+			name = "role",
+            description = "Role filter.",
+			required = False,
+			choices = ROLES
 		)
 	):
 
 		await interaction.response.defer()
 
-		champ = Champion(name = champion, region = "NA")
+		champ = Champion(name = champion.title(), region = "NA")
 
-		analytics = get_champion_analytics(str(champion), str(region), str(elo))
+		parser = Parser()
+		scraper = LeagueScraper(parser)
+		analytics = scraper.get_champion_analytics(str(champion), str(region), str(elo), str(role))
 
 		tier = analytics[0]
 		win_rate = analytics[1]
@@ -375,14 +297,14 @@ class LeagueCommands(commands.Cog, name = "League Of Legends", description = "Le
 		embed_elo = from_gg_to_normal(search_elo)
 
 		embed = nextcord.Embed(
-			title = f"{champion} Information",
-			description = f"Displaying statistics for {champion}\nElo: {embed_elo.capitalize()}\nRegion: {region.upper()}",
+			title = f"{champion.title()} Champion Analytics",
+			description = f"Displaying statistics for `{champion.title()}`\nElo: `{embed_elo.capitalize()}`\nRegion: `{region.upper()}`\nRole: `{role.upper()}`\n",
 			color = int(embed_color, 16),
 			timestamp = datetime.now(tz = timezone("US/Eastern"))	
 		)
 	
-		embed.add_field(name = "Champion Analytics (U.GG)", value = f"Tier: {tier}\nWin Rate: {win_rate}\nRanking: {ranking}\nPick Rate: {pick_rate}\nBan Rate: {ban_rate}\nMatches: {matches}", inline = False)
-		embed.set_author(name = "Killer Bot | League Of Legends Champion Analytics", icon_url = self.bot.user.avatar.url)
+		embed.add_field(name = "Champion Analytics (U.GG)", value = f"Tier: `{tier}`\nWin Rate: `{win_rate}`\nRanking: `{ranking}`\nPick Rate: `{pick_rate}`\nBan Rate: `{ban_rate}`\nMatches: `{matches}`", inline = False)
+		embed.set_author(name = "Killer Bot | League Of Legends", icon_url = self.bot.user.avatar.url)
 		embed.set_footer(text = f"Requested by {interaction.user}", icon_url = interaction.user.avatar.url)
 
 		embed.set_thumbnail(url = champ.image.url)
@@ -413,32 +335,38 @@ class LeagueCommands(commands.Cog, name = "League Of Legends", description = "Le
 		await interaction.send(embed = embed)
 
 	# Tierlist Command
-	@nextcord.slash_command(
-		name = "tierlist", 
-		description = "Show champion tierlist by OP.GG", 
-		guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID]
-	)
+	@nextcord.slash_command(name = "tierlist", description = "Show champion tierlist by OP.GG", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
 	async def tierlist(
 		self, 
 		interaction : nextcord.Interaction, 
 		region : str = nextcord.SlashOption(
 			name = "region",
 			description = "Region",
-			required = True,
+			required = False,
 			default = "NA",
-			choices = REGIONS
+			choices = REGIONS + ["world"]
 		), 
 		elo : str = nextcord.SlashOption(
 			name = "elo",
 			description = "Elo",
-			required = True,
-			default = "platinum+"
+			required = False,
+			default = "platinum+",
+			choices = RANKS
 		), 
 		role : str = nextcord.SlashOption(
 			name = "role",
 			description = "Role",
-			required = True,
-			default = "top"
+			required = False,
+			default = "top",
+			choices = ROLES
+		),
+		rows: int = nextcord.SlashOption(
+			name = "rows",
+			description = "Number of rows",
+			required = False,
+			default = 10,
+			min_value = 3,
+			max_value = 100
 		)
 	):
 		embed = nextcord.Embed(
@@ -448,7 +376,9 @@ class LeagueCommands(commands.Cog, name = "League Of Legends", description = "Le
 			timestamp = datetime.now(tz = timezone("US/Eastern"))	
 		)
 
-		tierlist = get_tierlist(region = region, tier = elo, position = role)	
+		parser = Parser()
+		scraper = LeagueScraper(parser)
+		tierlist = scraper.get_tierlist(region, elo, role, rows)	
 
 		df = pd.DataFrame(tierlist)
 
