@@ -2,7 +2,7 @@
 import nextcord
 from nextcord.ext import commands
 from db.read import get_modlog_channel
-from db.update import add_guild, add_modlog_channel
+from db.update import add_modlog_channel
 
 # Helpers
 from helpers.config import *
@@ -85,8 +85,6 @@ class ModLog(commands.Cog):
 	# Mod Log Constructor
 	def __init__(self, bot : commands.Bot):
 		self.bot = bot
-		self.log_channel = self.bot.get_channel(LOGS_CHANNEL_ID)
-		logger.info(f"[Mod Log] Log channel setted.")
 
 	# Handle Function
 	async def handle_property(self, key : str, before : nextcord.Guild, after : nextcord.Guild) -> tuple:
@@ -240,15 +238,7 @@ class ModLog(commands.Cog):
 			case _:
 				return name, value
 
-	# Mod Log On Ready
-	@commands.Cog.listener()
-	async def on_ready(self):
-		# Check if the mod log channel is set
-		if not self.log_channel:
-			self.log_channel = self.bot.get_channel(LOGS_CHANNEL_ID)
-			logger.info(f"[Mod Log] Log channel setted.")
-
-	@nextcord.slash_command(name = "setlogchannel", description = "Set the channel where modlog is gonna be logged.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
+	@nextcord.slash_command(name = "setmodlogchannel", description = "Set the channel where modlog is gonna be logged.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
 	async def setmodlogchannel(
 		self, 
 		interaction: nextcord.Interaction, 
@@ -265,13 +255,24 @@ class ModLog(commands.Cog):
 		await add_modlog_channel(interaction.guild.id, channel.id)
 		await interaction.send(f"Set modlog channel to {channel.mention}")
 
+	@nextcord.slash_command(name = "modlogchannel", description = "Get the channel where logs are stored.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
+	async def getmodlogchannel(self, interaction: nextcord.Interaction):
+		channel = await get_modlog_channel(interaction.guild.id)
+		if not channel:
+			await interaction.send("This guild doesn't have a mod log channel set.")
+			return
+		
+		channel = self.bot.get_channel(channel[0])
+		await interaction.send(f"Mod log channel for this guild: {channel.mention}")
+
 	# Channel Create Event
 	@commands.Cog.listener()
 	async def on_guild_channel_create(self, channel : GUILD_CHANNEL):
 		"""Log channel create event to mod log."""
-		if channel.guild.id not in GUILD_IDS: return
-
 		if channel.type == nextcord.ChannelType.private or channel.type == nextcord.ChannelType.group: return
+
+		send_channel = await get_modlog_channel(channel.guild.id)
+		send_channel = self.bot.get_channel(send_channel[0])
 
 		# Get channel type
 		if isinstance(channel, nextcord.CategoryChannel):
@@ -305,15 +306,16 @@ class ModLog(commands.Cog):
 		embed.add_field(name = "Position", value = str(channel.position), inline = False)
 		embed.add_field(name = "ID", value = f"```ini\nUser = {author.id}\nChannel = {channel.id}```", inline = False)
 
-		await self.log_channel.send(embed = embed)
+		await send_channel.send(embed = embed)
 
 	# Channel Delete Event
 	@commands.Cog.listener()
 	async def on_guild_channel_delete(self, channel : GUILD_CHANNEL):
 		"""Log channel delete event to mod log."""
-		if channel.guild.id not in GUILD_IDS: return
-
 		if channel.type == nextcord.ChannelType.private or channel.type == nextcord.ChannelType.group: return
+
+		send_channel = await get_modlog_channel(channel.guild.id)
+		send_channel = self.bot.get_channel(send_channel[0])
 
 		# Get channel type
 		if isinstance(channel, nextcord.CategoryChannel):
@@ -348,17 +350,18 @@ class ModLog(commands.Cog):
 		embed.add_field(name = "Position", value = str(channel.position), inline = False)
 		embed.add_field(name = "ID", value = f"```ini\nUser = {author.id}\nChannel = {channel.id}```", inline = False)
 
-		await self.log_channel.send(embed = embed)
+		await send_channel.send(embed = embed)
 
 	# Channel Update Event
 	@commands.Cog.listener()
 	async def on_guild_channel_update(self, before : GUILD_CHANNEL, after : GUILD_CHANNEL):
 		"""Log channel update event to mod log."""
-		if before.guild.id not in GUILD_IDS: return # Guild not in config.
-
 		if before.type == nextcord.ChannelType.private or before.type == nextcord.ChannelType.group: return # Private and Group channels will not be logged.
 
 		if before.position != after.position: return # Position will not be logged.
+
+		send_channel = await get_modlog_channel(before.guild.id)
+		send_channel = self.bot.get_channel(send_channel[0])
 
 		# Get channel type.
 		if isinstance(before, nextcord.CategoryChannel):
@@ -392,13 +395,14 @@ class ModLog(commands.Cog):
 		embed.add_field(name = "Name", value = f"Before: `{before.name}`\nAfter: `{after.name}`", inline = False)
 		embed.add_field(name = "ID", value = f"```ini\nUser = {author.id}\nChannel = {after.id}```", inline = False)
 
-		await self.log_channel.send(embed = embed)
+		await send_channel.send(embed = embed)
 
 	# Member Ban Event
 	@commands.Cog.listener()
 	async def on_member_ban(self, guild : nextcord.Guild, user : USER):
 		"""Log member ban event to mod log."""
-		if guild.id not in GUILD_IDS: return
+		send_channel = await get_modlog_channel(guild.id)
+		send_channel = self.bot.get_channel(send_channel[0])
 
 		# Embed Builder
 		builder = EmbedBuilder(self.bot)
@@ -419,13 +423,14 @@ class ModLog(commands.Cog):
 		embed.add_field(name = "Reason", value = entry.reason if entry.reason else "No reason provided", inline = False)
 		embed.add_field(name = "ID", value = f"```ini\nUser = {user.id}\nModerator = {author.id}```", inline = False)
 
-		await self.log_channel.send(embed = embed)
+		await send_channel.send(embed = embed)
 
 	# Member Unban Event
 	@commands.Cog.listener()
 	async def on_member_unban(self, guild : nextcord.Guild, user : USER):
 		"""Log member unban event to mod log."""
-		if guild.id not in GUILD_IDS: return
+		send_channel = await get_modlog_channel(guild.id)
+		send_channel = self.bot.get_channel(send_channel[0])
 
 		# Embed Builder
 		builder = EmbedBuilder(self.bot)
@@ -446,13 +451,14 @@ class ModLog(commands.Cog):
 		embed.add_field(name = "Reason", value = entry.reason if entry.reason else "No reason provided", inline = False)
 		embed.add_field(name = "ID", value = f"```ini\nUser = {user.id}\nModerator = {author.id}```", inline = False)
 
-		await self.log_channel.send(embed = embed)
+		await send_channel.send(embed = embed)
 
 	# Guild Emojis Create / Delete / Update Event
 	@commands.Cog.listener()
 	async def on_guild_emojis_update(self, guild : nextcord.Guild, before : list, after : list):
 		"""Log guild emojis update event to mod log."""
-		if guild.id not in GUILD_IDS: return
+		send_channel = await get_modlog_channel(guild.id)
+		send_channel = self.bot.get_channel(send_channel[0])
 
 		# Embed Builder
 		builder = EmbedBuilder(self.bot)
@@ -519,13 +525,14 @@ class ModLog(commands.Cog):
 
 		embed.add_field(name = "ID", value = f"```ini\nUser = {author.id}\nEmoji = {emoji.id}```", inline = False)
 
-		await self.log_channel.send(embed = embed)
+		await send_channel.send(embed = embed)
 
 	# Guild Member Join Event
 	@commands.Cog.listener()
 	async def on_member_join(self, member : USER):
 		"""Log member join event to mod log."""
-		if member.guild.id not in GUILD_IDS: return
+		send_channel = await get_modlog_channel(member.guild.id)
+		send_channel = self.bot.get_channel(send_channel[0])
 
 		# Embed Builder
 		builder = EmbedBuilder(self.bot)
@@ -547,13 +554,14 @@ class ModLog(commands.Cog):
 		embed.add_field(name = "Member Count", value = f"{member.guild.member_count}", inline = False)
 		embed.add_field(name = "ID", value = f"```ini\nUser = {member.id}\nGuild = {member.guild.id}```", inline = False)
 
-		await self.log_channel.send(embed = embed)
+		await send_channel.send(embed = embed)
 
 	# Guild Member Remove Event
 	@commands.Cog.listener()
 	async def on_member_remove(self, member : USER):
 		"""Log member remove event to mod log."""
-		if member.guild.id not in GUILD_IDS: return
+		send_channel = await get_modlog_channel(member.guild.id)
+		send_channel = self.bot.get_channel(send_channel[0])
 
 		# Embed Builder
 		builder = EmbedBuilder(self.bot)
@@ -584,13 +592,14 @@ class ModLog(commands.Cog):
 		embed.add_field(name = "Member Count", value = f"{member.guild.member_count}", inline = False)
 		embed.add_field(name = "ID", value = f"```ini\nUser = {member.id}\nGuild = {member.guild.id}```", inline = False)
 
-		await self.log_channel.send(embed = embed)
+		await send_channel.send(embed = embed)
 
 	# Guild Member Update Event
 	@commands.Cog.listener()
 	async def on_member_update(self, before : USER, after : USER):
 		"""Log member update event to mod log."""
-		if before.guild.id not in GUILD_IDS: return
+		send_channel = await get_modlog_channel(before.guild.id)
+		send_channel = self.bot.get_channel(send_channel[0])
 
 		# Embed Builder
 		builder = EmbedBuilder(self.bot)
@@ -688,13 +697,14 @@ class ModLog(commands.Cog):
 		# Avoid error if there's no value in the field
 		if not embed.fields[0].value: return 
 
-		await self.log_channel.send(embed = embed)
+		await send_channel.send(embed = embed)
 
 	# Guild Role Create Event
 	@commands.Cog.listener()
 	async def on_guild_role_create(self, role : nextcord.Role):
 		"""Log role create event to mod log."""
-		if role.guild.id not in GUILD_IDS: return
+		send_channel = await get_modlog_channel(role.guild.id)
+		send_channel = self.bot.get_channel(send_channel[0])
 
 		# Embed Builder
 		builder = EmbedBuilder(self.bot)
@@ -721,13 +731,14 @@ class ModLog(commands.Cog):
 			inline = False
 		)
 		
-		await self.log_channel.send(embed = embed)
+		await send_channel.send(embed = embed)
 
 	# Guild Role Delete Event
 	@commands.Cog.listener()
 	async def on_guild_role_delete(self, role : nextcord.Role):
 		"""Log role delete event to mod log."""
-		if role.guild.id not in GUILD_IDS: return
+		send_channel = await get_modlog_channel(role.guild.id)
+		send_channel = self.bot.get_channel(send_channel[0])
 
 		# Embed Builder
 		builder = EmbedBuilder(self.bot)
@@ -751,13 +762,14 @@ class ModLog(commands.Cog):
 			inline = False
 		)
 		
-		await self.log_channel.send(embed = embed)
+		await send_channel.send(embed = embed)
 
 	# Guild Role Update Event
 	@commands.Cog.listener()
 	async def on_guild_role_update(self, before : nextcord.Role, after : nextcord.Role):
 		"""Log role update event to mod log."""
-		if before.guild.id not in GUILD_IDS: return
+		send_channel = await get_modlog_channel(before.guild.id)
+		send_channel = self.bot.get_channel(send_channel[0])
 
 		# Embed Builder
 		builder = EmbedBuilder(self.bot)
@@ -857,13 +869,14 @@ class ModLog(commands.Cog):
 			inline = False
 		)
 		
-		await self.log_channel.send(embed = embed)
+		await send_channel.send(embed = embed)
 
 	# Guild Update Event
 	@commands.Cog.listener()
 	async def on_guild_update(self, before : nextcord.Guild, after : nextcord.Guild):
 		"""Log guild update event to mod log."""
-		if before.id not in GUILD_IDS: return
+		send_channel = await get_modlog_channel(before.id)
+		send_channel = self.bot.get_channel(send_channel[0])
 
 		# Embed Builder
 		builder = EmbedBuilder(self.bot)
@@ -938,18 +951,16 @@ class ModLog(commands.Cog):
 			inline = False
 		)
 
-		await self.log_channel.send(embed = embed)
+		await send_channel.send(embed = embed)
 
 	# Message Delete Event
 	@commands.Cog.listener()
 	async def on_message_delete(self, message : nextcord.Message):
 		"""Log message delete event to mod log."""
-		if message.guild.id not in GUILD_IDS: return
-		if message.author.bot == True: return
-		channel_id = await get_modlog_channel(message.guild.id)
-		channel = self.bot.get_channel(channel_id[0])
-		print(channel)
-		print(type(channel))
+		if not message.content: return
+
+		send_channel = await get_modlog_channel(message.guild.id)
+		send_channel = self.bot.get_channel(send_channel[0])
 
 		# Embed Builder
 		builder = EmbedBuilder(self.bot)
@@ -967,13 +978,17 @@ class ModLog(commands.Cog):
 		embed.add_field(name = "Date", value = f"<t:{round(ts)}:F>", inline = False)
 		embed.add_field(name = "ID", value = f"```ini\nUser = {message.author.id}\nMessage = {message.id}```", inline = False)
 		
-		await channel.send(embed = embed)
+		await send_channel.send(embed = embed)
 	
 	# Message Edit Event
 	@commands.Cog.listener()
 	async def on_message_edit(self, before : nextcord.Message, after : nextcord.Message):
 		"""Log message update event to mod log."""
-		if before.guild.id not in GUILD_IDS: return
+		if not before.content or not after.content: return
+
+		send_channel = await get_modlog_channel(before.guild.id)
+		send_channel = self.bot.get_channel(send_channel[0])
+
 		if before.author.bot == True: return
 
 		# Embed Builder
@@ -1021,13 +1036,15 @@ class ModLog(commands.Cog):
 			inline = False
 		)
 		
-		await self.log_channel.send(embed = embed)
+		await send_channel.send(embed = embed)
 
 	# Message Delete Bulk Event
 	@commands.Cog.listener()
 	async def on_bulk_message_delete(self, messages : list[nextcord.Message]):
 		"""Log message bulk delete event to mod log."""
-		if messages[0].guild.id not in GUILD_IDS: return # Guild is not in Guild IDs
+		send_channel = await get_modlog_channel(messages[0].guild.id)
+		send_channel = self.bot.get_channel(send_channel[0])
+
 		if len(messages) == 0: return # No Messages Were Deleted
 
 		# Embed Builder
@@ -1044,13 +1061,14 @@ class ModLog(commands.Cog):
 		# Link Embed
 		embed.add_field(name = "Link", value = link, inline = False)
 
-		await self.log_channel.send(embed = embed)
+		await send_channel.send(embed = embed)
 	
 	# Voice Channel Join Event
 	@commands.Cog.listener()
 	async def on_voice_state_update(self, member : USER, before : nextcord.VoiceState, after : nextcord.VoiceState):
 		"""Log voice channel join event to mod log."""
-		if member.guild.id not in GUILD_IDS: return
+		send_channel = await get_modlog_channel(member.guild.id)
+		send_channel = self.bot.get_channel(send_channel[0])
 		
 		# Embed Builder
 		builder = EmbedBuilder(self.bot)
@@ -1067,7 +1085,7 @@ class ModLog(commands.Cog):
 			embed.add_field(name = "Channel", value = f"{after.channel.mention} ({after.channel.name})", inline = False)
 			embed.add_field(name = "ID", value = f"```ini\nUser = {member.id}\nChannel = {after.channel.id}```", inline = False)
 
-			return await self.log_channel.send(embed = embed)
+			return await send_channel.send(embed = embed)
 
 		# Leave Voice / Stage Channel
 		elif before.channel != None and after.channel == None:
@@ -1081,7 +1099,7 @@ class ModLog(commands.Cog):
 			embed.add_field(name = "Channel", value = f"{before.channel.mention} ({before.channel.name})", inline = False)
 			embed.add_field(name = "ID", value = f"```ini\nUser = {member.id}\nChannel = {before.channel.id}```", inline = False)
 
-			return await self.log_channel.send(embed = embed)
+			return await send_channel.send(embed = embed)
 
 		# Move Voice / Stage Channel
 		elif before.channel != None and after.channel != None and before.channel != after.channel:
@@ -1096,7 +1114,7 @@ class ModLog(commands.Cog):
 			embed.add_field(name = "Previous Channel", value = f"{before.channel.mention} ({before.channel.name})", inline = False)
 			embed.add_field(name = "ID", value = f"```ini\nUser = {member.id}\nNew = {after.channel.id}\nOld = {before.channel.id}```", inline = False)
 			
-			return await self.log_channel.send(embed = embed)
+			return await send_channel.send(embed = embed)
 		
 		# Server Mute
 		if before.mute != after.mute:
@@ -1141,7 +1159,7 @@ class ModLog(commands.Cog):
 		embed.add_field(name = "Action", value = action, inline = False)
 		embed.add_field(name = "ID", value = f"```ini\nUser = {member.id}\nChannel = {after.channel.id}\n{'Perpetrator = ' + str(perpetrator.id) if perpetrator != None else ''}```", inline = False)
 
-		return await self.log_channel.send(embed = embed)			
+		return await send_channel.send(embed = embed)			
 
 def setup(bot : commands.Bot):
 	bot.add_cog(ModLog(bot))
