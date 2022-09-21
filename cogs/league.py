@@ -1,13 +1,7 @@
 import nextcord 
 import cassiopeia as cass
-import os
 import random
-import matplotlib.pyplot as plt
-import pandas as pd
-import numpy as np
-import arrow
 
-from riotwatcher import LolWatcher
 from cassiopeia import *
 
 from nextcord.ext import commands
@@ -22,13 +16,10 @@ from helpers.scraper import Parser, LeagueScraper
 from datetime import datetime
 from pytz import timezone
 
-from pandas.plotting import table
-
 cass.set_riot_api_key(RIOT_TOKEN)
 cass.apply_settings(CASSIOPEIA_CONFIG)
 
 logger = Logger()
-watcher = LolWatcher(RIOT_TOKEN)
 
 # League Cog
 class LeagueCommands(commands.Cog, name = "League Of Legends", description = "League of Legends commands."):
