@@ -3,7 +3,7 @@ from nextcord.ext import commands
 
 from helpers.config import MAIN_GUILD_ID, PREFIX, TESTING_GUILD_ID, VERSION
 
-class VarietyCommands(commands.Cog):
+class VarietyCommands(commands.Cog, name = "Variety", description = "Commands of a variety of different types."):
 
 	def __init__(self, bot : commands.Bot):
 		self.bot : commands.Bot = bot	
