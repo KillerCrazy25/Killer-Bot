@@ -24,7 +24,7 @@ from typing import Any, Union
 logger = Logger()
 
 # Types
-GUILD_CHANNEL = Union[nextcord.CategoryChannel, nextcord.TextChannel, nextcord.VoiceChannel, nextcord.StageChannel]
+GUILD_CHANNEL = Union[nextcord.CategoryChannel, nextcord.TextChannel, nextcord.VoiceChannel, nextcord.StageChannel, nextcord.ForumChannel]
 USER = Union[nextcord.User, nextcord.Member]
 
 # Constants
@@ -167,7 +167,7 @@ class ModLog(commands.Cog):
 			case "mfa_level":
 				name = "MFA Level"
 				if before.mfa_level != after.mfa_level:
-					value = f"Was: **{MFA_LEVELS[before.mfa_level.value]}**\nNow: **{MFA_LEVELS[after.mfa_level.value]}**"
+					value = f"Was: **{MFA_LEVELS[before.mfa_level]}**\nNow: **{MFA_LEVELS[after.mfa_level]}**"
 
 				return name, value
 
@@ -284,6 +284,9 @@ class ModLog(commands.Cog):
 		elif isinstance(channel, nextcord.StageChannel):
 			description = f"Stage channel created {channel.mention}"
 
+		elif isinstance(channel, nextcord.ForumChannel):
+			description = f"Forum channel created {channel.mention}"
+
 		else:
 			description = f"Text channel created {channel.mention}"
 
@@ -326,6 +329,9 @@ class ModLog(commands.Cog):
 
 		elif isinstance(channel, nextcord.StageChannel):
 			description = f"Stage channel deleted ({channel.name})"
+
+		elif isinstance(channel, nextcord.ForumChannel):
+			description = f"Forum channel deleted ({channel.name})"
 
 		else:
 			description = f"Text channel deleted ({channel.name})"
@@ -372,6 +378,9 @@ class ModLog(commands.Cog):
 
 		elif isinstance(before, nextcord.StageChannel):
 			description = f"Stage channel {after.mention} was updated ({after.name})"
+
+		elif isinstance(before, nextcord.ForumChannel):
+			description = f"Forum channel {after.mention} was updated ({after.name})"
 
 		else:
 			description = f"Text channel {after.mention} was updated ({after.name})"
