@@ -97,6 +97,7 @@ class EmbedBuilder:
 		embed.add_field(name = "League Of Legends:", value = "`/help League Of Legends`", inline = False)
 		embed.add_field(name = "Music:", value = "`/help Music`", inline = False)
 		embed.add_field(name = "Variety:", value = "`/help Variety`", inline = False)
+		embed.add_field(name = "ModLog:", value = "`/help ModLog`", inline = False)
 		embed.set_footer(
 			text = f"Requested by {user}",
 			icon_url = user.avatar.url
