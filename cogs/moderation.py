@@ -159,61 +159,34 @@ class ModerationCommands(commands.Cog, name = "Moderation", description = "Comma
 	@application_checks.has_permissions(manage_messages = True)
 	async def clear(
 		self, 
-		interaction : nextcord.Interaction, 
-		limit : int = nextcord.SlashOption(
+		interaction: nextcord.Interaction, 
+		limit: int = nextcord.SlashOption(
 			name = "limit",
 			description = "The amount of messages to clear.",
 			required = True,
-			default = 5
+			min_value = 5,
+			max_value = 100
 		), 
-		channel : str = nextcord.SlashOption(
+		channel: nextcord.abc.GuildChannel = nextcord.SlashOption(
 			name = "channel",
 			description = "The channel to clear messages from.",
 			required = False,
 			default = None,
+			channel_types = [nextcord.ChannelType.text]
 		) 
 	):
-		if channel == None:
-			channel = interaction.channel
-
-		# get channel id by name
-		if isinstance(channel, str):
-			channel = nextcord.utils.get(interaction.guild.text_channels, name = channel)
-		
-		if limit < 100:
-			embed = nextcord.Embed(
-				description = f"{interaction.user} has cleared {limit} messages in {channel}.",
-				color = nextcord.Color.og_blurple()
-			)
-
-			embed.set_author(name = "Killer Bot | Moderation", icon_url = self.bot.user.avatar.url)
-
-			await channel.purge(limit = limit)
-			await interaction.send(embed = embed)
-
-		else:
-			await interaction.send(embed = nextcord.Embed(
-				description = "Please provide a number less than 100.",
-				color = nextcord.Color.dark_gray()
-			)
-			.set_author(
-				name = "Killer Bot | Moderation", 
-				icon_url = self.bot.user.avatar.url
-			), 
-			delete_after = 15
-		)
-
-	@clear.on_autocomplete("channel")
-	async def get_channels(self, interaction : nextcord.Interaction, channel : str):
-		channels = interaction.guild.text_channels
 		if not channel:
-			# send the full autocomplete list
-			await interaction.response.send_autocomplete([chan.name for chan in channels])
-			return
+			channel = interaction.channel
 		
-		await interaction.response.send_autocomplete(
-			channel_list = [chan.name for chan in channels if channel.name in chan.name]
+		embed = nextcord.Embed(
+			description = f"{interaction.user} has cleared {limit} messages in {channel}.",
+			color = nextcord.Color.og_blurple()
 		)
+
+		embed.set_author(name = "Killer Bot | Moderation", icon_url = self.bot.user.avatar.url)
+
+		await channel.purge(limit = limit)
+		await interaction.send(embed = embed)
 
 def setup(bot : commands.Bot):
 	bot.add_cog(ModerationCommands(bot))
