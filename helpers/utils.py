@@ -32,3 +32,6 @@ def chunk(string : str, length : int) -> list:
 # Function that returns base64 of data parameter with padding characters to ensure its length is a multiple of 4.
 def pad_base64(data : str) -> str:	
 	return data + "=" * (-len(data) % 4)
+
+def trim(text: str, limit: int) -> str:
+	return text[: limit - 3].strip() + "..." if len(text) > limit else text
