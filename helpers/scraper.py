@@ -82,7 +82,7 @@ class LeagueScraper:
 
 		return self.BASE_STATS_URL.format(champion, role, region, rank)
 
-	def get_champion_analytics(self, champion: str = "annie", region: str = "NA", elo: str = "platinum+", role: str = "top") -> list:
+	def get_champion_analytics(self, champion: str = "annie", region: str = "NA", elo: str = "platinum+", role: str = "top") -> tuple:
 		"""
 		Returns a list of champions analytics for the given champion.
 
@@ -110,8 +110,39 @@ class LeagueScraper:
 		url = self._get_stats_url(champion = champion, role = role, region = region, rank = elo)
 		r = self.session.get(url)
 		container = r.html.find(".content-section", first = True)
-		divs = container.find(".value") # Tier, Win Rate, Rank, Pick Rate, Ban Rate, Matches
+		runes_container = r.html.find(".recommended-build_runes", first = True)
+		data_divs = container.find(".value") # Tier, Win Rate, Rank, Pick Rate, Ban Rate, Matches
 
-		data = [div.text for div in divs]
+		primary_runes_div = runes_container.find(".primary-tree", first = True)
+		secondary_runes_div = runes_container.find(".secondary-tree", first = True)
+
+		data = [div.text for div in data_divs]
+
+		primary_rune_images = primary_runes_div.find("img")
+		secondary_rune_images = secondary_runes_div.find("img")
+
+		primary_rune_images: list[str] = [rune.attrs["alt"] for rune in primary_rune_images]
+		secondary_rune_images: list[str] = [rune.attrs["alt"] for rune in secondary_rune_images]
+
+		primary_rune_images = [rune.replace("The Keystone ", "").replace("The Rune Tree ", "").replace("The Rune ", "") for rune in primary_rune_images]
+		secondary_rune_images = [rune.replace("The Keystone ", "").replace("The Rune Tree ", "").replace("The Rune ", "") for rune in secondary_rune_images]
+
+		runes = (primary_rune_images, secondary_rune_images)
 		
-		return data
+		return (data, runes)
+
+if __name__ == "__main__":
+	parser = Parser()
+	scraper = LeagueScraper(parser)
+
+	stats, runes = scraper.get_champion_analytics("annie", "world", "platinum+", "mid")
+
+	print("---------------------------------------------------------------")
+	print("STATS")
+	print("---------------------------------------------------------------")
+	print(stats)
+	print("---------------------------------------------------------------")
+	print("RUNES")
+	print("---------------------------------------------------------------")
+	print(runes)
+	print("---------------------------------------------------------------")
