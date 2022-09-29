@@ -51,3 +51,9 @@ async def get_issue(issue_id: str):
         async with db.cursor() as cursor:
             await cursor.execute("SELECT * FROM issues WHERE issue_id = ?", (issue_id,))
             return await cursor.fetchone()
+
+async def get_all_issues(rows: int):
+    async with aiosqlite.connect("main.db") as db:
+        async with db.cursor() as cursor:
+            await cursor.execute("SELECT * FROM issues")
+            return await cursor.fetchmany(rows)
