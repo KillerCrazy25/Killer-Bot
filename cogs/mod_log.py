@@ -2,7 +2,7 @@
 import nextcord
 from nextcord.ext import commands
 from db.read import get_modlog_channel
-from db.update import add_modlog_channel
+from db.update import update_modlog_channel
 
 # Helpers
 from helpers.config import *
@@ -78,9 +78,48 @@ REGIONS = {
 	"vip-amsterdam": "VIP Amsterdam"
 }
 
+SUPPORTED_EVENTS = [
+	"Channel Create",
+	"Channel Delete",
+	"Channel Update",
+	"Member Banned",
+	"Member Unbanned",
+	"Emojis Update",
+	"Member Join",
+	"Member Remove",
+	"Member Update",
+	"Role Create",
+	"Role Delete",
+	"Role Update",
+	"Server Settings Update",
+	"Message Delete",
+	"Message Update",
+	"Message Bulk Delete",
+	"Voice State Update"
+]
+
+EVENT_HELP = {
+	"Channel Create": "Channel Create event is triggered when a text/voice/forum/stage/category channel is created.",
+	"Channel Delete": "Channel Create event is triggered when a text/voice/forum/stage/category channel is deleted.",
+	"Channel Update": "Channel Create event is triggered when a text/voice/forum/stage/category channel is updated.",
+	"Member Banned": "Member Banned event is triggered when a member is banned from the server.",
+	"Member Unbanned": "Member Banned event is triggered when a member is unbanned from the server.",
+	"Emojis Update": "Emojis Update event is triggered when a member adds/removes/updates server emojis.",
+	"Member Join": "Member Join event is triggered when a member joins the server.",
+	"Member Remove": "Member Join event is triggered when a member leaves the server.",
+	"Member Update": "Member Join event is triggered when a member updates his profile.",
+	"Role Create": "Role Create event is triggered when a role is created.",
+	"Role Delete": "Role Create event is triggered when a role is deleted.",
+	"Role Update": "Role Create event is triggered when a role is updated.",
+	"Server Settings Update": "Server Settings Update event is triggered when settings there's an update of the server settings.",
+	"Message Delete": "Message Delete event is triggered when a member deletes a message.",
+	"Message Update": "Message Update event is triggered when a member edits a message.",
+	"Message Bulk Delete": "Message Bulk Delete event is triggered when a lot of messages are being deleted at the same time.",
+	"Voice State Update": "Voice State Update event is triggered when a member update his voice state."
+}
 
 # Mod Log Cog
-class ModLog(commands.Cog):
+class ModLog(commands.Cog, name = "ModLog", description = "Mod Log module."):
 
 	# Mod Log Constructor
 	def __init__(self, bot : commands.Bot):
@@ -238,8 +277,23 @@ class ModLog(commands.Cog):
 			case _:
 				return name, value
 
-	@nextcord.slash_command(name = "setmodlogchannel", description = "Set the channel where modlog is gonna be logged.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
-	async def setmodlogchannel(
+	# Show Event Help
+	async def show_event_help(self, event: str):
+		if not event or event not in SUPPORTED_EVENTS: return
+		help_for_message = f"Help for {event} event"
+		try:
+			event_help_message = EVENT_HELP[event]
+		except KeyError:
+			event_help_message = "Unknown Event Help"
+
+		return help_for_message, event_help_message
+
+	@nextcord.slash_command(name = "logs", description = "Logs related subcommands.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
+	async def logs_command(self, interaction: nextcord.Interaction):
+		pass
+
+	@logs_command.subcommand(name = "setchannel", description = "Set the channel where modlog is gonna be logged.")
+	async def set_channel_subcommand(
 		self, 
 		interaction: nextcord.Interaction, 
 		channel: nextcord.abc.GuildChannel = nextcord.SlashOption(
@@ -252,18 +306,47 @@ class ModLog(commands.Cog):
 		if not channel:
 			channel = interaction.channel
 
-		await add_modlog_channel(interaction.guild.id, channel.id)
+		await update_modlog_channel(interaction.guild.id, channel.id)
 		await interaction.send(f"Set modlog channel to {channel.mention}")
 
-	@nextcord.slash_command(name = "modlogchannel", description = "Get the channel where logs are stored.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
-	async def getmodlogchannel(self, interaction: nextcord.Interaction):
-		channel = await get_modlog_channel(interaction.guild.id)
-		if not channel:
-			await interaction.send("This guild doesn't have a mod log channel set.")
+	@logs_command.subcommand(name = "eventhelp", description = "Shows help about mod log events.")
+	async def event_help_subcommand(
+		self, 
+		interaction: nextcord.Interaction, 
+		event: str = nextcord.SlashOption(
+			name = "event", 
+			description = "Event that you want to show help about.", 
+			required = False, 
+			choices = SUPPORTED_EVENTS
+		)
+	):
+		if not event:
+			embed = nextcord.Embed(
+				title = "Supported mod log events.",
+				color = nextcord.Color.greyple()
+			)
+			embed.add_field(
+				name = "Events", 
+				value = "\n".join(SUPPORTED_EVENTS),
+				inline = False
+			)
+
+			embed.set_author(name = "Killer Bot | Mod Log", icon_url = self.bot.user.avatar.url)
+			embed.set_footer(text = "Type /logs eventhelp <event> for specific event help.")
+
+			await interaction.send(embed = embed, ephemeral = True)
 			return
-		
-		channel = self.bot.get_channel(channel[0])
-		await interaction.send(f"Mod log channel for this guild: {channel.mention}")
+
+		help_for, help_message = await self.show_event_help(event)
+
+		embed = nextcord.Embed(
+			title = help_for,
+			color = nextcord.Color.greyple()
+		)
+		embed.add_field(name = "**__Event Description__**", value = help_message, inline = False)
+		embed.set_author(name = "Killer Bot | Mod log", icon_url = self.bot.user.avatar.url)
+
+		await interaction.send(embed = embed, ephemeral = True)
 
 	# Channel Create Event
 	@commands.Cog.listener()
@@ -273,6 +356,8 @@ class ModLog(commands.Cog):
 
 		send_channel = await get_modlog_channel(channel.guild.id)
 		send_channel = self.bot.get_channel(send_channel[0])
+
+		if not send_channel: return
 
 		# Get channel type
 		if isinstance(channel, nextcord.CategoryChannel):
@@ -318,7 +403,10 @@ class ModLog(commands.Cog):
 		if channel.type == nextcord.ChannelType.private or channel.type == nextcord.ChannelType.group: return
 
 		send_channel = await get_modlog_channel(channel.guild.id)
-		send_channel = self.bot.get_channel(send_channel[0])
+		if send_channel[0]:
+			send_channel = self.bot.get_channel(send_channel[0])
+		else:
+			return
 
 		# Get channel type
 		if isinstance(channel, nextcord.CategoryChannel):
@@ -363,11 +451,13 @@ class ModLog(commands.Cog):
 	async def on_guild_channel_update(self, before : GUILD_CHANNEL, after : GUILD_CHANNEL):
 		"""Log channel update event to mod log."""
 		if before.type == nextcord.ChannelType.private or before.type == nextcord.ChannelType.group: return # Private and Group channels will not be logged.
-
 		if before.position != after.position: return # Position will not be logged.
 
 		send_channel = await get_modlog_channel(before.guild.id)
-		send_channel = self.bot.get_channel(send_channel[0])
+		if send_channel[0]:
+			send_channel = self.bot.get_channel(send_channel[0])
+		else:
+			return
 
 		# Get channel type.
 		if isinstance(before, nextcord.CategoryChannel):
@@ -411,7 +501,10 @@ class ModLog(commands.Cog):
 	async def on_member_ban(self, guild : nextcord.Guild, user : USER):
 		"""Log member ban event to mod log."""
 		send_channel = await get_modlog_channel(guild.id)
-		send_channel = self.bot.get_channel(send_channel[0])
+		if send_channel[0]:
+			send_channel = self.bot.get_channel(send_channel[0])
+		else:
+			return
 
 		# Embed Builder
 		builder = EmbedBuilder(self.bot)
@@ -439,7 +532,10 @@ class ModLog(commands.Cog):
 	async def on_member_unban(self, guild : nextcord.Guild, user : USER):
 		"""Log member unban event to mod log."""
 		send_channel = await get_modlog_channel(guild.id)
-		send_channel = self.bot.get_channel(send_channel[0])
+		if send_channel[0]:
+			send_channel = self.bot.get_channel(send_channel[0])
+		else:
+			return
 
 		# Embed Builder
 		builder = EmbedBuilder(self.bot)
@@ -467,7 +563,10 @@ class ModLog(commands.Cog):
 	async def on_guild_emojis_update(self, guild : nextcord.Guild, before : list, after : list):
 		"""Log guild emojis update event to mod log."""
 		send_channel = await get_modlog_channel(guild.id)
-		send_channel = self.bot.get_channel(send_channel[0])
+		if send_channel[0]:
+			send_channel = self.bot.get_channel(send_channel[0])
+		else:
+			return
 
 		# Embed Builder
 		builder = EmbedBuilder(self.bot)
@@ -541,7 +640,10 @@ class ModLog(commands.Cog):
 	async def on_member_join(self, member : USER):
 		"""Log member join event to mod log."""
 		send_channel = await get_modlog_channel(member.guild.id)
-		send_channel = self.bot.get_channel(send_channel[0])
+		if send_channel[0]:
+			send_channel = self.bot.get_channel(send_channel[0])
+		else:
+			return
 
 		# Embed Builder
 		builder = EmbedBuilder(self.bot)
@@ -570,7 +672,10 @@ class ModLog(commands.Cog):
 	async def on_member_remove(self, member : USER):
 		"""Log member remove event to mod log."""
 		send_channel = await get_modlog_channel(member.guild.id)
-		send_channel = self.bot.get_channel(send_channel[0])
+		if send_channel[0]:
+			send_channel = self.bot.get_channel(send_channel[0])
+		else:
+			return
 
 		# Embed Builder
 		builder = EmbedBuilder(self.bot)
@@ -608,7 +713,10 @@ class ModLog(commands.Cog):
 	async def on_member_update(self, before : USER, after : USER):
 		"""Log member update event to mod log."""
 		send_channel = await get_modlog_channel(before.guild.id)
-		send_channel = self.bot.get_channel(send_channel[0])
+		if send_channel[0]:
+			send_channel = self.bot.get_channel(send_channel[0])
+		else:
+			return
 
 		# Embed Builder
 		builder = EmbedBuilder(self.bot)
@@ -713,7 +821,10 @@ class ModLog(commands.Cog):
 	async def on_guild_role_create(self, role : nextcord.Role):
 		"""Log role create event to mod log."""
 		send_channel = await get_modlog_channel(role.guild.id)
-		send_channel = self.bot.get_channel(send_channel[0])
+		if send_channel[0]:
+			send_channel = self.bot.get_channel(send_channel[0])
+		else:
+			return
 
 		# Embed Builder
 		builder = EmbedBuilder(self.bot)
@@ -747,7 +858,10 @@ class ModLog(commands.Cog):
 	async def on_guild_role_delete(self, role : nextcord.Role):
 		"""Log role delete event to mod log."""
 		send_channel = await get_modlog_channel(role.guild.id)
-		send_channel = self.bot.get_channel(send_channel[0])
+		if send_channel[0]:
+			send_channel = self.bot.get_channel(send_channel[0])
+		else:
+			return
 
 		# Embed Builder
 		builder = EmbedBuilder(self.bot)
@@ -778,7 +892,10 @@ class ModLog(commands.Cog):
 	async def on_guild_role_update(self, before : nextcord.Role, after : nextcord.Role):
 		"""Log role update event to mod log."""
 		send_channel = await get_modlog_channel(before.guild.id)
-		send_channel = self.bot.get_channel(send_channel[0])
+		if send_channel[0]:
+			send_channel = self.bot.get_channel(send_channel[0])
+		else:
+			return
 
 		# Embed Builder
 		builder = EmbedBuilder(self.bot)
@@ -885,7 +1002,10 @@ class ModLog(commands.Cog):
 	async def on_guild_update(self, before : nextcord.Guild, after : nextcord.Guild):
 		"""Log guild update event to mod log."""
 		send_channel = await get_modlog_channel(before.id)
-		send_channel = self.bot.get_channel(send_channel[0])
+		if send_channel[0]:
+			send_channel = self.bot.get_channel(send_channel[0])
+		else:
+			return
 
 		# Embed Builder
 		builder = EmbedBuilder(self.bot)
@@ -969,7 +1089,13 @@ class ModLog(commands.Cog):
 		if not message.content: return
 
 		send_channel = await get_modlog_channel(message.guild.id)
-		send_channel = self.bot.get_channel(send_channel[0])
+		print(send_channel)
+		if send_channel[0]:
+			send_channel = self.bot.get_channel(send_channel[0])
+			print(send_channel)
+		else:
+			print(send_channel)
+			return
 
 		# Embed Builder
 		builder = EmbedBuilder(self.bot)
@@ -996,7 +1122,10 @@ class ModLog(commands.Cog):
 		if not before.content or not after.content: return
 
 		send_channel = await get_modlog_channel(before.guild.id)
-		send_channel = self.bot.get_channel(send_channel[0])
+		if send_channel[0]:
+			send_channel = self.bot.get_channel(send_channel[0])
+		else:
+			return
 
 		if before.author.bot == True: return
 
@@ -1052,7 +1181,10 @@ class ModLog(commands.Cog):
 	async def on_bulk_message_delete(self, messages : list[nextcord.Message]):
 		"""Log message bulk delete event to mod log."""
 		send_channel = await get_modlog_channel(messages[0].guild.id)
-		send_channel = self.bot.get_channel(send_channel[0])
+		if send_channel[0]:
+			send_channel = self.bot.get_channel(send_channel[0])
+		else:
+			return
 
 		if len(messages) == 0: return # No Messages Were Deleted
 
@@ -1077,7 +1209,10 @@ class ModLog(commands.Cog):
 	async def on_voice_state_update(self, member : USER, before : nextcord.VoiceState, after : nextcord.VoiceState):
 		"""Log voice channel join event to mod log."""
 		send_channel = await get_modlog_channel(member.guild.id)
-		send_channel = self.bot.get_channel(send_channel[0])
+		if send_channel[0]:
+			send_channel = self.bot.get_channel(send_channel[0])
+		else:
+			return
 		
 		# Embed Builder
 		builder = EmbedBuilder(self.bot)
@@ -1170,5 +1305,5 @@ class ModLog(commands.Cog):
 
 		return await send_channel.send(embed = embed)			
 
-def setup(bot : commands.Bot):
+def setup(bot: commands.Bot):
 	bot.add_cog(ModLog(bot))
