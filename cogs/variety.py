@@ -53,43 +53,73 @@ class VarietyCommands(commands.Cog, name = "Variety", description = "Commands of
 
 	# Guild Info Command
 	@nextcord.slash_command(name = "guildinfo", description = "Shows useful information about the guild.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
-	async def guildinfo(self, interaction: nextcord.Interaction):
+	async def guildinfo(
+		self, 
+		interaction: nextcord.Interaction,
+		guild_id: str = nextcord.SlashOption(
+			name = "guild",
+			description = "Guild ID that you want scan. Keep in mind that I need access to that guild.",
+			required = False
+		)
+	):
+		if not guild_id:
+			guild = interaction.guild
+		else:			
+			guild = self.bot.get_guild(int(guild_id))
+		
+		if not guild:
+			return await interaction.send(f"I couldn't find `{guild_id}` guild.", ephemeral = True)
+
 		COLORS = [nextcord.Color.yellow(), nextcord.Color.gold(), nextcord.Color.blurple(), nextcord.Color.red(), nextcord.Color.purple()]
 		embed = nextcord.Embed(
-			description = f"**Name**: {interaction.guild.name}\n{'**Description**: ' + interaction.guild.description if interaction.guild.description else ''}",
+			description = f"**Name**: {guild.name}\n{'**Description**: ' + guild.description if guild.description else ''}",
 			color = random.choice(COLORS)
 		)
-		embed.add_field(name = "ID", value = str(interaction.guild.id), inline = True)
-		embed.add_field(name = "Owner", value = f"{interaction.guild.owner.mention}", inline = True)
-		embed.add_field(name = "Created at", value = f"{interaction.guild.created_at.strftime('%d/%m/%Y, %I:%M %P')} (<t:{round(interaction.guild.created_at.timestamp())}:R>)", inline = False)
-		embed.add_field(name = "Total Members", value = str(interaction.guild.member_count), inline = True)
+		embed.add_field(name = "ID", value = str(guild.id), inline = True)
+		embed.add_field(name = "Owner", value = f"{guild.owner}", inline = True)
+		embed.add_field(name = "Created at", value = f"{guild.created_at.strftime('%d/%m/%Y, %I:%M %P')} (<t:{round(guild.created_at.timestamp())}:R>)", inline = False)
+		embed.add_field(name = "Total Members", value = str(guild.member_count), inline = True)
 		embed.add_field(
 			name = "Channels", 
-			value = f"Text: **{len(interaction.guild.text_channels)}**\nVoice: **{len(interaction.guild.voice_channels)}**\nStage: **{len(interaction.guild.stage_channels)}**\nForum: **{len(interaction.guild.forum_channels)}**\nCategories: **{len(interaction.guild.categories)}**\n\nTotal: **{len(interaction.guild.channels)}**",
+			value = f"Text: **{len(guild.text_channels)}**\nVoice: **{len(guild.voice_channels)}**\nStage: **{len(guild.stage_channels)}**\nForum: **{len(guild.forum_channels)}**\nCategories: **{len(guild.categories)}**\n\nTotal: **{len(guild.channels)}**",
 			inline = True
 		)
 		embed.add_field(
 			name = "Extras", 
-			value = f"Roles: **{len(interaction.guild.roles)}**\nEmojis: **{len(interaction.guild.emojis)}**\nFeatures:\n``{', '.join(interaction.guild.features).upper()}``",
+			value = f"Roles: **{len(guild.roles)}**\nEmojis: **{len(guild.emojis)}**\nFeatures:\n``{', '.join(guild.features).upper()}``",
 			inline = True
 		)
 		embed.add_field(
 			name = "Server Boosts", 
-			value = f"Total Boosters: **{interaction.guild.premium_subscription_count}**\nBoost Tier: **{interaction.guild.premium_tier}**",
+			value = f"Total Boosters: **{guild.premium_subscription_count}**\nBoost Tier: **{guild.premium_tier}**",
 			inline = False
 		)
 		embed.add_field(
 			name = "Security",
-			value = f"Verification: **{VERIFICATION_LEVELS[interaction.guild.verification_level.value]}**\nExplicit Content: **{EXPLICIT_CONTENT_LEVELS[interaction.guild.explicit_content_filter.value]}**\nTwo Factor Authentication: **{MFA_LEVELS[interaction.guild.mfa_level]}**",
+			value = f"Verification: **{VERIFICATION_LEVELS[guild.verification_level.value]}**\nExplicit Content: **{EXPLICIT_CONTENT_LEVELS[guild.explicit_content_filter.value]}**\nTwo Factor Authentication: **{MFA_LEVELS[guild.mfa_level]}**",
 			inline = False
 		)
+		try:
+			invite_links = [invite.url for invite in await guild.invites()]
+			embed.add_field(
+				name = "Invite Links",
+				value = "\n".join(invite_links),
+				inline = False
+			)
+		except nextcord.errors.Forbidden:
+			embed.add_field(
+				name = "Invite Links",
+				value = "No permission.",
+				inline = False
+			)
 
-		embed.set_thumbnail(url = interaction.guild.icon.url)
+		embed.set_thumbnail(url = guild.icon.url if guild.icon else None)
 		embed.set_footer(text = f"Requested by {interaction.user}", icon_url = interaction.user.avatar.url if interaction.user.avatar else None)
 		embed.set_author(name = f"Killer Bot | Guild Information", icon_url = self.bot.user.avatar.url)
 
 		await interaction.send(embed = embed)
 
+	# User Info Command
 	@nextcord.slash_command(name = "userinfo", description = "Shows information about given user.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
 	async def userinfo_command(
 		self, 
@@ -122,7 +152,8 @@ class VarietyCommands(commands.Cog, name = "Variety", description = "Commands of
 		embed.set_footer(text = f"Requested by {interaction.user}", icon_url = interaction.user.avatar.url)
 
 		await interaction.send(embed = embed)
-
+	
+	# User Info Context Menu
 	@nextcord.user_command(name = "User Information")
 	async def userinfo_context(self, interaction: nextcord.Interaction, member: nextcord.Member):
 		embed = nextcord.Embed(
@@ -141,14 +172,14 @@ class VarietyCommands(commands.Cog, name = "Variety", description = "Commands of
 
 		await interaction.send(embed = embed)
 
+	# User Info Autocomplete
 	@userinfo_command.on_autocomplete("user")
 	async def get_guild_users(self, interaction: nextcord.Interaction, user: str):
-		guild_users = [member.name for member in interaction.guild.members]
 		if not user:
-			await interaction.response.send_autocomplete(guild_users)
+			await interaction.response.send_autocomplete([member.name for member in interaction.guild.members])
 			return
 		
-		get_near_user = [member for member in guild_users if member.lower().startswith(member.lower())]
+		get_near_user = [member.name for member in interaction.guild.members if member.name.lower().startswith(user.lower())]
 		await interaction.response.send_autocomplete(get_near_user)
 
 def setup(bot: commands.Bot):
