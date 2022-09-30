@@ -1,8 +1,9 @@
 import nextcord
-from nextcord.ext import commands
+from nextcord.ext import commands, application_checks
 
-from helpers.config import DEVELOPER_ID, MAIN_GUILD_ID, TESTING_GUILD_ID
+from helpers.config import MAIN_GUILD_ID, TESTING_GUILD_ID
 from helpers.logger import Logger
+from helpers.checks import is_developer
 
 from db.update import add_guild
 
@@ -13,21 +14,24 @@ class DeveloperCommands(commands.Cog, name = "Developer Commands", description =
 		self.bot = bot
 
 	@nextcord.slash_command(name = "developer", description = "Developer only command group.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
+	@application_checks.check(is_developer)
 	async def developer_command(self, interaction: nextcord.Interaction):
-		if interaction.user.id != DEVELOPER_ID:
-			return await interaction.send("You are not the bot developer.", ephemeral = True)
+		pass
 	
 	@developer_command.subcommand(name = "guilds", description = "Shows the guilds that bot is in.")
+	@application_checks.check(is_developer)
 	async def guilds(self, interaction: nextcord.Interaction):
 		await interaction.send("I'm in " + str(len(self.bot.guilds)) + " guilds\n\n**Guilds**\n" + '\n'.join('Name: ' + guild.name + ' - ' + 'ID: ' + str(guild.id) for guild in self.bot.guilds))
 
 	@developer_command.subcommand(name = "addguild", description = "Manually add guild to database.")
+	@application_checks.check(is_developer)
 	async def addguild(self, interaction: nextcord.Interaction):
 		await add_guild(interaction.guild.id)
 		await interaction.send("Successfully added this guild to the database!")
 
 	# Global Message Command
 	@developer_command.subcommand(name = "globalmsg", description = "Sends a global message to all servers the bot is in")
+	@application_checks.check(is_developer)
 	async def globalmsg(
 		self, 
 		interaction : nextcord.Interaction, 
@@ -63,11 +67,13 @@ class DeveloperCommands(commands.Cog, name = "Developer Commands", description =
 
 	# Extension Command
 	@developer_command.subcommand(name = "extension", description = "Manage bot extensions.")
+	@application_checks.check(is_developer)
 	async def extension_subcommand(self, interaction: nextcord.Interaction):
 		pass
 		
 	# Load Subcommand
 	@extension_subcommand.subcommand(name = "load", description = "Load extension.")
+	@application_checks.check(is_developer)
 	async def load_subcommand(
 		self, 
 		interaction: nextcord.Interaction, 
@@ -77,9 +83,6 @@ class DeveloperCommands(commands.Cog, name = "Developer Commands", description =
 			required = True
 		)
 	):
-		if interaction.user.id != DEVELOPER_ID:
-			return await interaction.send("You do not have permission to use this command.")
-
 		try:
 			self.bot.load_extension(f"cogs.{extension}")
 			await interaction.send(f"Successfully loaded `{extension}`!")
@@ -88,6 +91,7 @@ class DeveloperCommands(commands.Cog, name = "Developer Commands", description =
 
 	# Unload Subcommand
 	@extension_subcommand.subcommand(name = "unload", description = "Unload extension.")
+	@application_checks.check(is_developer)
 	async def unload_subcommand(
 		self,
 		interaction: nextcord.Interaction, 
@@ -97,9 +101,6 @@ class DeveloperCommands(commands.Cog, name = "Developer Commands", description =
 			required = True
 		)
 	):
-		if interaction.user.id != DEVELOPER_ID:
-			return await interaction.send("You do not have permission to use this command.")
-
 		try:
 			self.bot.unload_extension(f"cogs.{extension}")
 			await interaction.send(f"Successfully unloaded `{extension}`!")
@@ -108,6 +109,7 @@ class DeveloperCommands(commands.Cog, name = "Developer Commands", description =
 
 	# Reload Subcommand
 	@extension_subcommand.subcommand(name = "reload", description = "Reload extension.")
+	@application_checks.check(is_developer)
 	async def reload_subcommand(
 		self,
 		interaction: nextcord.Interaction, 
@@ -117,9 +119,6 @@ class DeveloperCommands(commands.Cog, name = "Developer Commands", description =
 			required = True
 		)
 	):
-		if interaction.user.id != DEVELOPER_ID:
-			return await interaction.send("You are not the bot developer.")
-
 		try:
 			self.bot.reload_extension(f"cogs.{extension}")
 			await interaction.send(f"Successfully reloaded `{extension}`!")
