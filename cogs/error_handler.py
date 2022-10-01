@@ -17,149 +17,77 @@ class ErrorHandler(commands.Cog):
 	# Error Handler Constructor
 	def __init__(self, bot : commands.Bot):
 		self.bot = bot
+		self.developer = bot.get_user(DEVELOPER_ID)	
+		self.builder = EmbedBuilder(bot)
 
-	# Ready Event
 	@commands.Cog.listener()
-	async def on_ready(self):
-		self.developer = self.bot.get_user(DEVELOPER_ID)
-		self.error_channel = self.bot.get_channel(ERROR_CHANNEL_ID)
+	async def on_application_command_error(self, interaction: nextcord.Interaction, error: nextcord.DiscordException):
+		if isinstance(error, commands.errors.CheckFailure):
+			embed = await self.builder.error_embed("Check Failure", error)
 
-	# Command Error Event
-	@commands.Cog.listener()
-	async def on_command_error(self, ctx : commands.Context, error):
-		
-		# Embed Builder
-		builder = EmbedBuilder(self.bot)
+			return await interaction.send(embed = embed, ephemeral = True)
+		elif isinstance(error, commands.errors.BotMissingAnyRole):
+			roles = {
+				"Missing Role": error.missing_roles
+			}
+			embed = await self.builder.error_embed("Bot Missing Any Role", error, roles)
 
-		# Command Not Found Error
-		if isinstance(error, commands.CommandNotFound):
-			print(f"Command not found: {ctx.command}")
-			return
+			return await interaction.send(embed = embed, ephemeral = True)
+		elif isinstance(error, commands.errors.BotMissingRole):
+			role = {
+				"Missing Role": error.missing_role
+			}
+			embed = await self.builder.error_embed("Bot Missing Role", error, role)
 
-		# Missing Any Role Error
-		elif isinstance(error, commands.MissingAnyRole):
-			embed = await builder.error_embed()
+			return await interaction.send(embed = embed, ephemeral = True)
+		elif isinstance(error, commands.errors.BotMissingPermissions):
+			permissions = {
+				"Missing Permissions": error.missing_permissions
+			}
+			embed = await self.builder.error_embed("Bot Missing Permissions", error, permissions)
 
-			roles = ", ".join(error.missing_roles)
+			return await interaction.send(embed = embed, ephemeral = True)
+		elif isinstance(error, commands.errors.MissingAnyRole):
+			roles = {
+				"Missing Role": error.missing_roles
+			}
+			embed = await self.builder.error_embed("Missing Any Role", error, roles)
 
-			embed.add_field(name = "Error", value = f"You are missing at least one of the required roles: `{roles}`")
+			return await interaction.send(embed = embed, ephemeral = True)
+		elif isinstance(error, commands.errors.MissingRole):
+			role = {
+				"Missing Role": error.missing_role
+			}
+			embed = await self.builder.error_embed("Missing Role", error, role)
 
-			return await ctx.send(embed = embed, delete_after = 10)
+			return await interaction.send(embed = embed, ephemeral = True)
+		elif isinstance(error, commands.errors.MissingPermissions):
+			permissions = {
+				"Missing Permissions": error.missing_permissions
+			}
+			embed = await self.builder.error_embed("Missing Permissions", error, permissions)
 
-		# Missing Role Error
-		elif isinstance(error, commands.MissingRole):
-			embed = await builder.error_embed()
+			return await interaction.send(embed = embed, ephemeral = True)
+		elif isinstance(error, commands.errors.ChannelNotFound):
+			channel = {
+				"Channel": error.argument
+			}
+			embed = await self.builder.error_embed("Channel Not Found", error, channel)
 
-			embed.add_field(name = "Error", value = f"You need the role `{error.missing_role}` to run this command.")
+			return await interaction.send(embed = embed, ephemeral = True)
+		elif isinstance(error, commands.errors.BadArgument):
+			args = {
+				"Argument(s)": error.args
+			}
+			embed = await self.builder.error_embed("Bad Argument", error, args)
 
-			return await ctx.send(embed = embed, delete_after = 10)
-
-		# Missing Permissions Error
-		elif isinstance(error, commands.MissingPermissions):
-			embed = await builder.error_embed()
-
-			permissions = ", ".join(error.missing_permissions)
-
-			embed.add_field(name = "Error", value = f"You are missing `{permissions}` permission(s) to run this command.")
-
-			return await ctx.send(embed = embed, delete_after = 10)
-
-		# Bot Missing Any Role Error
-		elif isinstance(error, commands.BotMissingAnyRole):
-			embed = await builder.error_embed()
-
-			roles = ", ".join(error.missing_roles)
-
-			embed.add_field(name = "Error", value = f"I'm missing at least one of the required roles: `{roles}`")
-
-			return await ctx.send(embed = embed, delete_after = 10)
-
-		# Bot Missing Role Error
-		elif isinstance(error, commands.BotMissingRole):
-			embed = await builder.error_embed()
-
-			embed.add_field(name = "Error", value = f"I need the role `{error.missing_role}` to run this command.")
-
-			return await ctx.send(embed = embed, delete_after = 10)
-
-		# Bot Missing Permissions Error
-		elif isinstance(error, commands.BotMissingPermissions):
-			embed = await builder.error_embed()
-
-			permissions = ", ".join(error.missing_permissions)
-
-			embed.add_field(name = "Error", value = f"I'm missing `{permissions}` permission(s) to run this command.")
-
-			return await ctx.send(embed = embed, delete_after = 10)
-
-		# Command On Cooldown Error
-		elif isinstance(error, commands.CommandOnCooldown):
-			embed = await builder.error_embed()
-
-			embed.add_field(name = "Error", value = f"This command is under cooldown. Please retry again in: **{error.retry_after:.1f} seconds**")
-
-			return await ctx.send(embed = embed, delete_after = 10)
-
-		# Missing Required Argument Error
-		elif isinstance(error, commands.MissingRequiredArgument):
-			embed = await builder.error_embed()
-
-			embed.add_field(name = "Error", value = f"You are missing some required arguments to run this commands: `{error.param.name}`")
-
-			return await ctx.send(embed = embed, delete_after = 10)
-
-		# No Private Message Error
-		elif isinstance(error, commands.NoPrivateMessage):
-			embed = await builder.error_embed()
-
-			embed.add_field(name = "Error", value = "This command isn't runnable outside a guild!")
-
-			return await ctx.send(embed = embed, delete_after = 10)
-
-		# Private Message Only Error
-		elif isinstance(error, commands.PrivateMessageOnly):
-			embed = await builder.error_embed()
-
-			embed.add_field(name = "Error", value = "This command isn't runnable outside a private message!")
-
-			return await ctx.send(embed = embed, delete_after = 10)
-
-		# Other Errors
+			return await interaction.send(embed = embed, ephemeral = True)
 		else:
-			embed = await builder.error_embed()
+			embed = await self.builder.error_embed("Unknown Error", error)
 
-			error_id = ctx.message.id
+			return await interaction.send(embed = embed, ephemeral = True)
 
-			embed.add_field(name = "Error", value = "Unknown error has ocurred. The error has been sent to the Bot Developer.")
-
-			print(f"Ignoring exception in command {ctx.command}\nError ID: {error_id}")
-
-			with open(f"{error_id}.txt", 'a') as f:
-				f.write(f"Error in command {ctx.command} in guild {ctx.guild.name}\n\n{str(error)}\n\nDate: {datetime.now(tz = timezone('US/Eastern'))}\nError ID: {error_id}")
-
-			with open(f"{error_id}.txt", 'rb') as f:
-				await self.error_channel.send(f"An error has ocurred in command `{ctx.command}` in guild `{ctx.guild.name}`.", file = nextcord.File(f, f"{error_id}.txt"))
-
-			embed.set_footer(text = f"Error ID: {error_id}")
-
-			os.remove(f"{error_id}.txt")
-
-			return await ctx.send(embed = embed)
-
-	@commands.Cog.listener()
-	async def on_application_command_error(self, interaction : nextcord.Interaction, error : nextcord.DiscordException):
 		
-		# Embed Builder
-		builder = EmbedBuilder(self.bot)
-
-		# Command Not Found Error
-		if isinstance(error, commands.CommandNotFound):
-			logger.warning(f"Command not found: {interaction.command}")
-			return
-
-		logger.error(f"{error}")
-
-		return await interaction.send(embed = await builder.error_embed())
 
 def setup(bot):
 	bot.add_cog(ErrorHandler(bot))
