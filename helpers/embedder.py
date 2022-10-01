@@ -85,66 +85,6 @@ class EmbedBuilder:
 
 		return embed
 
-	# Help Main Page Embed Builder
-	async def help_main_page_embed(self, user : Member) -> Embed:
-		embed = Embed(
-			title = f"Help",
-			color = Color.blurple(),
-			timestamp = datetime.now(tz = timezone("US/Eastern"))
-		)
-		embed.set_thumbnail(url = f"{self.bot.user.avatar.url}")
-		embed.add_field(name = "Moderation:", value = "`/help Moderation`", inline = False)
-		embed.add_field(name = "League Of Legends:", value = "`/help League Of Legends`", inline = False)
-		embed.add_field(name = "Music:", value = "`/help Music`", inline = False)
-		embed.add_field(name = "Variety:", value = "`/help Variety`", inline = False)
-		embed.add_field(name = "ModLog:", value = "`/help ModLog`", inline = False)
-		embed.set_footer(
-			text = f"Requested by {user}",
-			icon_url = user.avatar.url
-		)
-		embed.set_author(
-			name = "Killer Bot | Help",
-			icon_url = self.bot.user.avatar.url
-		)
-
-		return embed
-
-	# Help Modules Page Embed Builder
-	async def help_modules_page_embed(self, module : str, user : Member) -> Embed:
-		embed = Embed(
-			title = f"{module.title()} Commands:",
-			color = Color.blurple(),
-			timestamp = datetime.now(tz = timezone("US/Eastern"))
-		).set_author(
-			name = "Killer Bot | Help",
-			icon_url = self.bot.user.avatar.url
-		).set_footer(
-			text = f"Requested by {user}",
-			icon_url = user.avatar.url
-		)
-		for command in self.bot.get_cog(f"{module.title()}").application_commands:
-			description = command.description
-			options = command.options
-			if not description or description is None or description == "":
-				description = "No description"
-
-			if not options or options is None or options == "":
-				options_message = ""
-			
-			options_message = ""
-			i = 0
-			for option_name, option_content in options.items():
-				i += 1
-				options_message += f"\n    *{i}.* **{option_name}**: `{option_content.description}` {'(**Required**)' if option_content.required else ''}"
-				
-			embed.add_field(
-				name = f"> {command.name.title()} Command",
-				value = f"\n- **Description**: `{description}`\n- **Usage**: `/{command.name}`" + f" `<options>`\n- **Options**: {options_message}" if options else f"\n- **Description**: `{description}`\n- **Usage**: `/{command.name}`",
-				inline = False
-			)
-		
-		return embed
-
 	# Match Info Embed Builder
 	async def match_embed(self, match: Match, summoner: Summoner, region: str) -> Embed:
 		"""embed.set_footer(text = f"Requested by {interaction.user} • Match ID: {last_match.id}", icon_url = interaction.user.avatar.url)"""
