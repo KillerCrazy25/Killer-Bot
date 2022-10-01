@@ -5,7 +5,7 @@ from helpers.config import MAIN_GUILD_ID, TESTING_GUILD_ID
 from helpers.logger import Logger
 from helpers.checks import is_developer
 
-from db.update import add_guild
+from db import create_guild
 
 logger = Logger()
 
@@ -26,7 +26,7 @@ class DeveloperCommands(commands.Cog, name = "Developer Commands", description =
 	@developer_command.subcommand(name = "addguild", description = "Manually add guild to database.")
 	@application_checks.check(is_developer)
 	async def addguild(self, interaction: nextcord.Interaction):
-		await add_guild(interaction.guild.id)
+		await create_guild(interaction.guild.id)
 		await interaction.send("Successfully added this guild to the database!")
 
 	# Global Message Command
