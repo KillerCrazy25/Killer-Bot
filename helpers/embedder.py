@@ -2,6 +2,7 @@ import arrow
 
 from nextcord.ext import commands
 from nextcord import Embed, Color, Asset, Member
+from nextcord.errors import DiscordException
 from cassiopeia import Match, Summoner
 
 from typing import (
@@ -21,20 +22,22 @@ from pytz import timezone
 class EmbedBuilder:
 	
 	# ModLogEmbedBuilder Constructor
-	def __init__(self, bot : commands.Bot):
-		self.bot : commands.Bot = bot
+	def __init__(self, bot: commands.Bot):
+		self.bot = bot
 
 	# Error Embed Builder
-	async def error_embed(self) -> Embed:
-		"""Returns an error embed."""
+	async def error_embed(self, error_name: str, error: DiscordException, missing: Optional[Dict] = None) -> Embed:
+		"""Returns an error embed."""		
 		embed = Embed(
-			title = "Something went wrong trying to run this command.",
+			title = "An error has ocurred executing this command.",
 			color = Color.dark_red(),
 			timestamp = datetime.now(tz = timezone("US/Eastern"))
 		)
-
-		embed.set_author(name = "Killer Bot | Error", icon_url = self.bot.user.avatar.url)
-		embed.set_footer(text = "This message will be deleted in 10 seconds...")
+		embed.add_field(name = f"__Error__: {error_name}", value = f"**__Details__**: {error}")
+		if missing:
+			embed.add_field(name = missing.keys(), value = "\n".join(list(missing.values())))
+		
+		embed.set_footer(text = "You can report any bug using /issue create command!")
 
 		return embed
 
@@ -87,7 +90,6 @@ class EmbedBuilder:
 
 	# Match Info Embed Builder
 	async def match_embed(self, match: Match, summoner: Summoner, region: str) -> Embed:
-		"""embed.set_footer(text = f"Requested by {interaction.user} • Match ID: {last_match.id}", icon_url = interaction.user.avatar.url)"""
 		# Getting teams and teams information
 		blue_team = get_match_teams(match.id, region)[0]
 		red_team = get_match_teams(match.id, region)[1]
