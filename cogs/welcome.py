@@ -118,51 +118,51 @@ class Welcome(commands.Cog):
 		await interaction.send(embed = embed)
 
 	@welcome_command.subcommand(name = "setrole", description = "Set the role that new users are gonna get when they join this server.")
-	async def set_role_subcommand(
+	async def set_rolesubcommand(
 		self, 
 		interaction: nextcord.Interaction, 
-		role: str = nextcord.SlashOption(
+		role: nextcord.Role = nextcord.SlashOption(
 			name = "role",
 			description = "Role that you want to give to new users.",
 			required = True
 		)
 	):
-		role_ = nextcord.utils.get(interaction.guild.roles, name = role)
-		if not role_:
+		# role = nextcord.utils.get(interaction.guild.roles, name = role)
+		if not role:
 			await interaction.send(f"**Error**: I couldn't find `{role}` role on this guild.\n**Solution**: Choose a valid role.", ephemeral = True)
 			return
 
-		if interaction.guild.me.top_role.position < role_.position:
-			await interaction.send(f"**Error**: I cannot set {role_.mention} as a welcome role because I cannot give that role to a member because is too high for my highest role ({interaction.guild.me.top_role.mention}) in the role hierarchy.\n**Solution**: Please give me a higher role than {role_.mention} or choose a lower role than {interaction.guild.me.top_role.mention}!", ephemeral = True)
+		if interaction.guild.me.top_role.position < role.position:
+			await interaction.send(f"**Error**: I cannot set {role.mention} as a welcome role because I cannot give that role to a member because is too high for my highest role ({interaction.guild.me.top_role.mention}) in the role hierarchy.\n**Solution**: Please give me a higher role than {role.mention} or choose a lower role than {interaction.guild.me.top_role.mention}!", ephemeral = True)
 			return
 
-		if interaction.guild.me.top_role.position == role_.position:
-			await interaction.send(f"**Error**: I cannot set {role_.mention} as a welcome role because I cannot give that role to a member because is in the same position of my highest role ({interaction.guild.me.top_role.mention}) in the role hierarchy.\n**Solution**: Please give me a higher role than {role_.mention} or choose a lower role than {interaction.guild.me.top_role.mention}!", ephemeral = True)
+		if interaction.guild.me.top_role.position == role.position:
+			await interaction.send(f"**Error**: I cannot set {role.mention} as a welcome role because I cannot give that role to a member because is in the same position of my highest role ({interaction.guild.me.top_role.mention}) in the role hierarchy.\n**Solution**: Please give me a higher role than {role.mention} or choose a lower role than {interaction.guild.me.top_role.mention}!", ephemeral = True)
 			return
 
-		if role_.is_integration() or role_.is_bot_managed():
-			await interaction.send(f"**Error**: I cannot set {role_.mention} as a welcome role because that role belongs to a bot or integration.\n**Solution**: Choose another role.", ephemeral = True)
+		if role.is_integration() or role.is_bot_managed():
+			await interaction.send(f"**Error**: I cannot set {role.mention} as a welcome role because that role belongs to a bot or integration.\n**Solution**: Choose another role.", ephemeral = True)
 			return
 
-		if role_.is_premium_subscriber():
-			await interaction.send(f"**Error**: I cannot set {role_.mention} as a welcome role because that role can be assigned to Nitro Boosters only.\n**Solution**: Choose another role.", ephemeral = True)
+		if role.is_premium_subscriber():
+			await interaction.send(f"**Error**: I cannot set {role.mention} as a welcome role because that role can be assigned to Nitro Boosters only.\n**Solution**: Choose another role.", ephemeral = True)
 			return
 
-		if role_.is_default():
-			await interaction.send(f"**Error**: I cannot set {role_.mention} as a welcome role because that role is default role.\n**Solution**: Choose another role.", ephemeral = True)
+		if role.is_default():
+			await interaction.send(f"**Error**: I cannot set {role.mention} as a welcome role because that role is default role.\n**Solution**: Choose another role.", ephemeral = True)
 			return
 
-		await update_welcome_role(interaction.guild.id, role_.id)
-		await interaction.send(f"Successfully set welcome role to {role_.mention}", ephemeral = True)
+		await update_welcome_role(interaction.guild.id, role.id)
+		await interaction.send(f"Successfully set welcome role to {role.mention}", ephemeral = True)
 
-	@set_role_subcommand.on_autocomplete("role")
-	async def set_role_autocomplete(self, interaction: nextcord.Interaction, role: str):
-		roles = interaction.guild.roles
-		if not role:
-			await interaction.response.send_autocomplete([role_.name for role_ in roles[1:]])
-			return
+	# @set_rolesubcommand.on_autocomplete("role")
+	# async def set_roleautocomplete(self, interaction: nextcord.Interaction, role: str):
+	# 	roles = interaction.guild.roles
+	# 	if not role:
+	# 		await interaction.response.send_autocomplete([role.name for role in roles[1:]])
+	# 		return
 		
-		await interaction.response.send_autocomplete([role_.name for role_ in roles[1:] if role_.name.lower().startswith(role.lower())])
+	# 	await interaction.response.send_autocomplete([role.name for role in roles[1:] if role.name.lower().startswith(role.lower())])
 
 	@welcome_command.subcommand(name = "varhelp", description = "Shows help about welcome message variables.")
 	async def variable_help_subcommand(
