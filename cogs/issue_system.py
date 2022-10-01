@@ -4,8 +4,9 @@ import string
 
 from nextcord.ext import commands
 
-from db.update import add_issue, update_issue
+from db.update import update_issue
 from db.read import get_all_issues, get_issue
+from db.create import create_issue
 
 from helpers.config import MAIN_GUILD_ID, TESTING_GUILD_ID, ISSUES_CHANNEL_ID
 from helpers.utils import trim
@@ -134,7 +135,7 @@ class IssueSystem(commands.Cog):
 		view = IssueButtonsView(issue_id)
 
 		view.message = await issues_channel.send(embed = embed, view = view)
-		await add_issue(interaction.guild.id, interaction.user.id, priority if priority else "Not specified", f"Opened by `{interaction.user}`", issue_description, issue_id)
+		await create_issue(interaction.guild.id, interaction.user.id, priority if priority else "Not specified", f"Opened by `{interaction.user}`", issue_description, issue_id)
 		await interaction.send(f"Your issue has been submited with success! Thanks for reporting and contributing with my development :)\n\nPlease keep direct messages open, when the developer reviews your issue, the bot will send you a message with the response.\n\nIssue ID: `{issue_id}`", ephemeral = True)
 
 	@issue_command.subcommand(name = "view", description = "View information about the given issue.")
