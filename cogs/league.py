@@ -5,8 +5,8 @@ import random
 from cassiopeia import *
 
 from nextcord.ext import commands
-from helpers.embedder import EmbedBuilder
 
+from helpers.embedder import EmbedBuilder
 from helpers.utils import *
 from helpers.config import MAIN_GUILD_ID, TESTING_GUILD_ID, CASSIOPEIA_CONFIG, RIOT_TOKEN
 from helpers.logger import Logger
@@ -26,7 +26,7 @@ class LeagueCommands(commands.Cog, name = "League Of Legends", description = "Le
 
 	# League Constructor
 	def __init__(self, bot : commands.Bot):
-		self.bot : commands.Bot = bot
+		self.bot = bot
 
 	# Profile Command
 	@nextcord.slash_command(
@@ -34,7 +34,7 @@ class LeagueCommands(commands.Cog, name = "League Of Legends", description = "Le
 		description = "Profile command.",
 		guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID]
 	)
-	async def profile(
+	async def profile_command(
 		self, 
 		interaction : nextcord.Interaction, 
 		user : str = nextcord.SlashOption(
@@ -140,15 +140,15 @@ class LeagueCommands(commands.Cog, name = "League Of Legends", description = "Le
 		description = "Shows the last match of a summoner.",
 		guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID]
 	)
-	async def lastmatch(
+	async def lastmatch_command(
 		self, 
-		interaction : nextcord.Interaction,
-		user : str = nextcord.SlashOption(
+		interaction: nextcord.Interaction,
+		user: str = nextcord.SlashOption(
 			name = "summoner",
 			description = "The summoner name to get the last match of.",
 			required = True
 		),
-		region : str = nextcord.SlashOption(
+		region: str = nextcord.SlashOption(
 			name = "region",
 			description = "The region of the summoner.",
 			required = True,
@@ -176,68 +176,13 @@ class LeagueCommands(commands.Cog, name = "League Of Legends", description = "Le
 		# Sending embed
 		await interaction.edit_original_message(content = None, embed = embed)
 
-	# Champion List Command
-	@nextcord.slash_command(
-		name = "championlist",
-		description = "Shows the list of champions.",
-		guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID]
-	)
-	async def championlist(self, interaction : nextcord.Interaction, region : str = nextcord.SlashOption(
-		name = "region",
-		description = "The region of the summoner.",
-		required = True,
-		choices = REGIONS, 
-		default = "NA"
-	)):
-		await interaction.response.defer(with_message = True)
-
-		# Creating embed
-		embed = nextcord.Embed(
-			title = "Champion List",
-			color = nextcord.Color.blue(),
-			timestamp = datetime.now()
-		)
-		# All champions
-		champions = cass.get_champions(region)
-		# Champions message
-		champions_message = ""
-		champions_dict = {}
-		count = 0
-		for champion in champions:
-			count += 1
-			champions_message += f"{count}. {champion.name}\n"
-			champions_dict[count] = {
-				"name": champion.name,
-				"id": champion.id
-			}
-		# Json file
-		with open(f"champions_{region.lower()}.json", "w") as file:
-			json.dump(champions_dict, file, indent = 4)
-		# Chunk message
-		champions_message = chunk(champions_message, 1024)
-		# Splitting Content
-		if len(champions_message) > 1:
-			embed.add_field(name = "Champion List", value = f"{champions_message[0]}", inline = False)
-			for i in range(1, len(champions_message)):
-				embed.add_field(name = "Champion List Continued", value = f"{champions_message[i]}", inline = False)
-
-		else:
-			embed.add_field(name = "Champion List", value = f"{champions_message[0]}", inline = False)
-
-		# Author, footer and thumbnail
-		embed.set_author(name = "Killer Bot | League Of Legends", icon_url = self.bot.user.avatar.url)
-		embed.set_footer(text = f"Requested by {interaction.user}", icon_url = interaction.user.avatar.url)
-
-		# Sending embed
-		await interaction.send(embed = embed)
-
 	# Champ Command
 	@nextcord.slash_command(
 		name = "champ", 
 		description = "Show champion analytics by U.GG",
 		guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID]
 	)
-	async def champ(
+	async def champ_command(
 		self, 
 		interaction: nextcord.Interaction, 
 		champion: str = nextcord.SlashOption(
@@ -274,7 +219,7 @@ class LeagueCommands(commands.Cog, name = "League Of Legends", description = "Le
 
 		parser = Parser()
 		scraper = LeagueScraper(parser)
-		analytics = scraper.get_champion_analytics(str(champion), str(region), str(elo), str(role))
+		analytics, runes = scraper.get_champion_analytics(str(champion), str(region), str(elo), str(role))
 
 		tier = analytics[0]
 		win_rate = analytics[1]
@@ -282,6 +227,36 @@ class LeagueCommands(commands.Cog, name = "League Of Legends", description = "Le
 		pick_rate = analytics[3]
 		ban_rate = analytics[4]
 		matches = analytics[5]
+
+		primary_runes = runes[0]
+		secondary_runes = runes[1]
+		shards = runes[2]
+
+		primary_rune_names = [parser.format_rune_name(rune) for rune in primary_runes]
+		secondary_rune_names = [parser.format_rune_name(rune) for rune in secondary_runes]
+		shard_names = [parser.format_shard_name(shard) for shard in shards]
+
+		primary_rune_key = parser.get_rune_tree_by_key(primary_rune_names[0])
+		secondary_rune_key = parser.get_rune_tree_by_rune(secondary_rune_names[0])
+
+		primary_rune_key_emoji = parser.get_rune_key_emoji(primary_rune_key)
+		secondary_rune_key_emoji = parser.get_rune_key_emoji(secondary_rune_key)
+
+		primary_rune_emojis = [parser.get_rune_emoji(rune) for rune in primary_runes]
+		secondary_rune_emojis = [parser.get_rune_emoji(rune) for rune in secondary_runes]
+		shard_emojis = [parser.get_shard_emoji(shard) for shard in shards]
+
+		primary_message = ""
+		for name, emoji in zip(primary_rune_names, primary_rune_emojis):
+			primary_message += f"{emoji} {name}\n"
+
+		secondary_message = ""
+		for name, emoji in zip(secondary_rune_names, secondary_rune_emojis):
+			secondary_message += f"{emoji} {name}\n"
+
+		shard_message = ""
+		for name, emoji in zip(shard_names, shard_emojis):
+			shard_message += f"{emoji} {name}\n"
 
 		embed_color = get_embed_color(tier)
 		search_elo = from_normal_to_gg(elo)
@@ -294,13 +269,27 @@ class LeagueCommands(commands.Cog, name = "League Of Legends", description = "Le
 			timestamp = datetime.now(tz = timezone("US/Eastern"))	
 		)
 	
-		embed.add_field(name = "Champion Analytics (U.GG)", value = f"Tier: `{tier}`\nWin Rate: `{win_rate}`\nRanking: `{ranking}`\nPick Rate: `{pick_rate}`\nBan Rate: `{ban_rate}`\nMatches: `{matches}`", inline = False)
+		embed.add_field(name = "Statistics", value = f"Tier: `{tier}`\nWin Rate: `{win_rate}`\nRanking: `{ranking}`\nPick Rate: `{pick_rate}`\nBan Rate: `{ban_rate}`\nMatches: `{matches}`", inline = False)
+		embed.add_field(name = f"{primary_rune_key_emoji} {primary_rune_key}", value = f"\u2063\n{primary_message}", inline = True)
+		embed.add_field(name = f"{secondary_rune_key_emoji} {secondary_rune_key}", value = f"\u2063\n{secondary_message}", inline = True)
+		embed.add_field(name = f"<:runesicon:1026324792929964063> **Shards**", value = f"\u2063\n{shard_message}", inline = True)
+
 		embed.set_author(name = "Killer Bot | League Of Legends", icon_url = self.bot.user.avatar.url)
 		embed.set_footer(text = f"Requested by {interaction.user}", icon_url = interaction.user.avatar.url)
 
 		embed.set_thumbnail(url = champ.image.url)
 
 		await interaction.send(embed = embed)
+
+	@champ_command.on_autocomplete("champion")
+	async def champion_autocomplete(self, interaction: nextcord.Interaction, champion: str):
+		all_champions = [champion.name for champion in cass.get_champions(region = "NA")]
+		if not champion:
+			await interaction.response.send_autocomplete(all_champions)
+			return
+
+		get_near_champion = [champ for champ in all_champions if champ.lower().startswith(champion.lower())]
+		await interaction.response.send_autocomplete(get_near_champion)
 
 	# RandomChamp Command
 	@nextcord.slash_command(
