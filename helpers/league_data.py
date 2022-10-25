@@ -378,6 +378,28 @@ REGIONS = [
 	"TR"
 ]
 
+LOCALES = [
+	"en_US",
+	"cs_CZ",
+	"de_DE",
+	"el_GR",
+	"en_AU",
+	"en_GB",
+	"es_AR",
+	"es_ES",
+	"es_MX",
+	"fr_FR",
+	"hu_HU",
+	"it_IT",
+	"ja_JP",
+	"ko_KR",
+	"pl_PL",
+	"pt_BR",
+	"ro_RO",
+	"ru_RU",
+	"tr_TR"
+]
+
 ROLES = [
 	"top",
 	"jungle",

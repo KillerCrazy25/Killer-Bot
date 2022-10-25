@@ -1,5 +1,5 @@
 from typing import Optional
-from requests_html import HTMLSession
+from requests_html import HTMLSession, Element
 
 RUNES_BY_NAME = {
 	# Rune Trees
@@ -119,9 +119,9 @@ class Parser:
 		regions = {
 			"na": "na1",
 			"euw": "euw1",
-			"eune": "eune1",
+			"eune": "eun1",
 			"br": "br1",
-			"kr": "kr1",
+			"kr": "kr",
 			"lan": "la1",
 			"las": "la1",
 			"oce": "oc1",
@@ -238,10 +238,13 @@ class Parser:
 
 class LeagueScraper:
 	BASE_STATS_URL = "https://u.gg/lol/champions/{}/build/{}?region={}&rank={}"
+	CHAMPIONS_URL = "https://static.u.gg/assets/lol/riot_static/{patch}.1/data/en_US/champion/{champion}.json"
+	ITEMS_URL = "https://stats2.u.gg/lol/1.1/table/items/{patch}/ranked_solo_5x5/{key}/1.5.0.json"
+	ITEM_NAMES = "https://static.u.gg/assets/lol/riot_static/{patch}.1/data/en_US/item.json"
 
 	def __init__(self, parser: Parser):
 		self.parser = parser
-		self.session = HTMLSession()
+		self.session = HTMLSession()		
 
 	def _get_stats_url(self, champion: str, region: str, rank: str, role: str) -> str:
 		region = self.parser.region_parser(region)
@@ -277,9 +280,11 @@ class LeagueScraper:
 
 		url = self._get_stats_url(champion = champion, role = role, region = region, rank = elo)
 		r = self.session.get(url)
+
 		container = r.html.find(".content-section", first = True)
+
 		runes_container = r.html.find(".recommended-build_runes", first = True)
-		data_divs = container.find(".value") # Tier, Win Rate, Rank, Pick Rate, Ban Rate, Matches
+		data_divs = container.find(".value")
 
 		primary_runes_div = runes_container.find(".primary-tree", first = True)
 		secondary_runes_div = runes_container.find(".secondary-tree", first = True)
@@ -294,15 +299,11 @@ class LeagueScraper:
 		secondary_image_elements = [element.find("img", first = True) for element in secondary_active_runes_div]
 		shard_image_elements = [element.find("img", first = True) for element in active_shards_div]
 
-		# primary_images = [img.attrs["alt"].lower().replace("the keystone ", "").replace("the rune ", "").replace("'", "").replace(" ", "_").replace(":", "") for img in primary_image_elements]
-		# secondary_images = [img.attrs["alt"].lower().replace("the rune ", "").replace(" ", "_").replace(":", "") for img in secondary_image_elements]
-		# shard_images = [img.attrs["alt"].lower().replace("the ", "").replace(" shard", "").replace(" ", "_").replace(":", "") for img in shard_image_elements]
+		primary_alts = [img.attrs["alt"] for img in primary_image_elements]
+		secondary_alts = [img.attrs["alt"] for img in secondary_image_elements]
+		shard_alts = [img.attrs["alt"] for img in shard_image_elements]
 
-		primary_images = [img.attrs["alt"] for img in primary_image_elements]
-		secondary_images = [img.attrs["alt"] for img in secondary_image_elements]
-		shard_images = [img.attrs["alt"] for img in shard_image_elements]
-
-		runes = (primary_images, secondary_images, shard_images)
+		runes = (primary_alts, secondary_alts, shard_alts)
 		
 		return data, runes
 	
@@ -312,13 +313,12 @@ if __name__ == "__main__":
 
 	stats, runes = scraper.get_champion_analytics("sion", "world", "platinum+", "top")
 
-	print("---------------------------------------------------------------")
-	print("STATS")
-	print("---------------------------------------------------------------")
-	print(stats)
-	print("---------------------------------------------------------------")
-	print("RUNES")
-	print("---------------------------------------------------------------")
-	print(runes)
-	print("---------------------------------------------------------------")
-	print(str(parser))
+	# print("---------------------------------------------------------------")
+	# print("STATS")
+	# print("---------------------------------------------------------------")
+	# print(stats)
+	# print("---------------------------------------------------------------")
+	# print("RUNES")
+	# print("---------------------------------------------------------------")
+	# print(runes)
+	# print("---------------------------------------------------------------")

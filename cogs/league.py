@@ -215,7 +215,7 @@ class LeagueCommands(commands.Cog, name = "League Of Legends", description = "Le
 
 		await interaction.response.defer()
 
-		champ = Champion(name = champion.title(), region = "NA")
+		champ = Champion(name = champion, region = "NA")
 
 		parser = Parser()
 		scraper = LeagueScraper(parser)
@@ -285,11 +285,63 @@ class LeagueCommands(commands.Cog, name = "League Of Legends", description = "Le
 	async def champion_autocomplete(self, interaction: nextcord.Interaction, champion: str):
 		all_champions = [champion.name for champion in cass.get_champions(region = "NA")]
 		if not champion:
-			await interaction.response.send_autocomplete(all_champions)
+			choices = random.choices(all_champions, k = 25)
+			await interaction.response.send_autocomplete(choices)
 			return
 
 		get_near_champion = [champ for champ in all_champions if champ.lower().startswith(champion.lower())]
 		await interaction.response.send_autocomplete(get_near_champion)
+
+	@nextcord.slash_command(
+		name = "lolstatus",
+		description = "Shows League Of Legends server's status.",
+		guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID]
+	)
+	async def lol_status_command(
+		self, 
+		interaction: nextcord.Interaction,
+		region: str = nextcord.SlashOption(
+			name = "region",
+			description = "Region that you want to show status of.",
+			required = True,
+			choices = REGIONS
+		),
+		locale: str = nextcord.SlashOption(
+			name = "locale",
+			description = "Language of the response",
+			required = True,
+			choices = LOCALES
+		)
+	):
+		region_ = from_cass_to_riot(region)
+		status = watcher.lol_status_v4.platform_data(region_)
+		maintenances = status["maintenances"]
+		if len(maintenances) > 0:
+			for index, maintenance in enumerate(maintenances, 1):
+				for title in maintenance["titles"]:
+					if title["locale"] == locale:
+						maintenance_content = f"{index}) {title['content']}"
+
+		incidents = status["incidents"]
+		if len(incidents) > 0:
+			for index, incident in enumerate(incidents, 1):
+				for title in incident["titles"]:
+					if title["locale"] == locale:
+						incident_content = f"{index}) {title['content']}"
+
+		embed = nextcord.Embed(
+			title = "League Of Legends Service Status",
+			description = f"Displaying status for region `{region}`"
+		)
+		if len(maintenances) > 0:
+			embed.add_field(name = "Maintenances", value = f"{maintenance_content}", inline = False)
+		if len(incidents) > 0:
+			embed.add_field(name = "Incidents", value = f"{incident_content}", inline = False)
+
+		embed.set_author(name = "Killer Bot | League Of Legends", icon_url = self.bot.user.avatar.url)
+		embed.set_footer(text = f"Requested by {interaction.user}", icon_url = interaction.user.avatar.url if interaction.user.avatar else None)
+	
+		await interaction.send(embed = embed)
 
 	# RandomChamp Command
 	@nextcord.slash_command(

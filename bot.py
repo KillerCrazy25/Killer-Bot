@@ -21,6 +21,21 @@ async def on_ready():
 	await create_tables()
 	await change_presence_task.start()
 
+@bot.command()
+async def testinglol(ctx):
+	embed = nextcord.Embed(
+		title = f"Lee Sin Champion Analytics",
+		description = f"Displaying statistics for `Lee Sin`\nElo: `Platinum+`\nRegion: `WORLD`\nRole: `JUNGLE`\n",
+		color = nextcord.Color.blurple()
+	)
+	embed.set_author(name = "Killer Bot | League Of Legends", icon_url = bot.user.avatar.url)
+	embed.set_footer(text = f"Requested by {ctx.author}", icon_url = ctx.author.avatar.url)
+
+	embed.add_field(name = "Starter Items", value = "**Pick Rate**: 67.01%\n**Matches**: 50,773 Games\n**Win Rate**: 49.95%\n\n:question: Item 1 Name\n:question: Item 2 Name\n\n\n**Pick Rate**: 67.01%\n**Matches**: 50,773 Games\n**Win Rate**: 49.95%\n\n:question: Item 1 Name\n:question: Item 2 Name")
+	embed.add_field(name = "Boots", value = "**Pick Rate**: 67.01%\n**Matches**: 50,773 Games\n**Win Rate**: 49.95%\n:question: Boots Option 1\n**Pick Rate**: 67.01%\n**Matches**: 50,773 Games\n**Win Rate**: 49.95%\n\n:question: Boots Option 1\n\n\n**Pick Rate**: 67.01%\n**Matches**: 50,773 Games\n**Win Rate**: 49.95%\n:question: Boots Option 1\n**Pick Rate**: 67.01%\n**Matches**: 50,773 Games\n**Win Rate**: 49.95%\n\n:question: Boots Option 2")
+
+	await ctx.send(embed = embed)
+
 for filename in os.listdir("./cogs"):
 	if filename.endswith(".py"):
 		try:

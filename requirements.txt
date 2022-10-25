@@ -1,4 +1,4 @@
-nextcord==2.1.0
+nextcord==2.2.0
 pytz
 python-dotenv
 cassiopeia==5.0.3

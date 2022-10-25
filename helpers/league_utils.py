@@ -218,6 +218,10 @@ async def get_summoner_or_fail(user : str, region : str) -> Summoner:
 	
 	return summoner
 
+async def get_champion_or_fail(champion: str, region: str) -> Champion:
+	"""Get champion object."""
+	champion = Champion(name = champion,)
+
 # Function That Parses Roles
 def op_gg_role_parser(role : str) -> str:
 	match role:
