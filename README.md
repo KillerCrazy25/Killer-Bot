@@ -9,3 +9,8 @@ You can invite Killer Bot using [this link](https://discord.com/api/oauth2/autho
 ## Contributing
 
 If you want to contribute to Killer Bot's development, you can follow [contributing guide](https://github.com/KillerCrazy25/Killer-Bot/tree/main/wiki/contributing.md).
+
+
+## Supporting
+
+If you want to support me, give credit if you use this source-code!
