@@ -11,13 +11,13 @@ from helpers.config import MAIN_GUILD_ID, TESTING_GUILD_ID
 class ModerationCommands(commands.Cog, name = "Moderation", description = "Commands for Moderators"):
 
 	# Moderation Constructor
-	def __init__(self, bot : commands.Bot):
-		self.bot : commands.Bot = bot
+	def __init__(self, bot: commands.Bot):
+		self.bot: commands.Bot = bot
 
 	# Ban Command
 	@nextcord.slash_command(name = "ban", description = "Bans a user from the server.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
 	@application_checks.has_permissions(ban_members = True)
-	async def ban(
+	async def ban_command(
 		self, 
 		interaction : nextcord.Interaction, 
 		user : nextcord.Member = nextcord.SlashOption(
@@ -26,7 +26,6 @@ class ModerationCommands(commands.Cog, name = "Moderation", description = "Comma
 			required = False,
 			default = None		
 		), 
-		*, 
 		reason : str = nextcord.SlashOption(
 			name = "reason",
 			description = "The reason for the ban.",
@@ -111,7 +110,7 @@ class ModerationCommands(commands.Cog, name = "Moderation", description = "Comma
 	# Unban Command
 	@nextcord.slash_command(name = "unban", description = "Unbans a user from the server.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
 	@application_checks.has_permissions(ban_members = True)
-	async def unban(self, interaction : nextcord.Interaction, id : int):
+	async def unban_command(self, interaction : nextcord.Interaction, id : int = nextcord.SlashOption(name = "id", description = "The ID of the user that you want to unban.", required = True)):
 		user = await self.bot.fetch_user(id)
 
 		if user == None:
@@ -157,7 +156,7 @@ class ModerationCommands(commands.Cog, name = "Moderation", description = "Comma
 	# Clear Command
 	@nextcord.slash_command(name = "clear", description = "Clears a certain amount of messages a text channel.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
 	@application_checks.has_permissions(manage_messages = True)
-	async def clear(
+	async def clear_command(
 		self, 
 		interaction: nextcord.Interaction, 
 		limit: int = nextcord.SlashOption(
@@ -187,6 +186,23 @@ class ModerationCommands(commands.Cog, name = "Moderation", description = "Comma
 
 		await channel.purge(limit = limit)
 		await interaction.send(embed = embed)
+
+	@nextcord.slash_command(name = "warn", description = "Warns a user.")
+	async def warn_command(
+		self, 
+		interaction: nextcord.Interaction, 
+		user: nextcord.Member = nextcord.SlashOption(
+			name = "user",
+			description = "The user that you want to warn",
+			required = True
+		),
+		reason: str = nextcord.SlashOption(
+			name = "reason",
+			description = "The reason of the warn.",
+			required = False
+		)
+	):
+		pass
 
 def setup(bot : commands.Bot):
 	bot.add_cog(ModerationCommands(bot))

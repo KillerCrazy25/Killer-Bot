@@ -7,6 +7,7 @@ import riotwatcher
 from nextcord.ext import commands
 
 from helpers.config import MAIN_GUILD_ID, PREFIX, TESTING_GUILD_ID, VERSION
+from helpers.utils import trim
 
 # Constants
 VERIFICATION_LEVELS = {
@@ -49,7 +50,7 @@ class VarietyCommands(commands.Cog, name = "Variety", description = "Commands of
 		embed.add_field(name = "> Libraries Information", value = f"```\n- Nextcord V{nextcord.__version__}\n- Cassiopeia V{cassiopeia.__version__}\n- RiotWatcher V{riotwatcher.__version__}```", inline = False)
 		embed.add_field(name = "> Resources Information", value = f"```- CPU: {psutil.cpu_percent()}%\n- RAM: {psutil.virtual_memory().percent}%\n- Disk: {psutil.disk_usage('/').percent}%```", inline = False)
 
-		embed.set_footer(text = f"Requested by {interaction.user}", icon_url = interaction.user.avatar.url)
+		embed.set_footer(text = f"Requested by {interaction.user}", icon_url = interaction.user.avatar.url if interaction.user.avatar else None)
 		embed.set_author(name = "Killer Bot | Bot Information", icon_url = self.bot.user.avatar.url)
 
 		await interaction.send(embed = embed)
@@ -118,7 +119,7 @@ class VarietyCommands(commands.Cog, name = "Variety", description = "Commands of
 
 		embed.set_thumbnail(url = guild.icon.url if guild.icon else None)
 		embed.set_footer(text = f"Requested by {interaction.user}", icon_url = interaction.user.avatar.url if interaction.user.avatar else None)
-		embed.set_author(name = f"Killer Bot | Guild Information", icon_url = self.bot.user.avatar.url)
+		embed.set_author(name = f"Killer Bot | Guild Information", icon_url = interaction.user.avatar.url if interaction.user.avatar else None)
 
 		await interaction.send(embed = embed)
 
@@ -148,7 +149,7 @@ class VarietyCommands(commands.Cog, name = "Variety", description = "Commands of
 
 		embed.set_thumbnail(url = user.avatar.url if user.avatar else None)
 		embed.set_author(name = "Killer Bot | User Information", icon_url = self.bot.user.avatar.url)
-		embed.set_footer(text = f"Requested by {interaction.user}", icon_url = interaction.user.avatar.url)
+		embed.set_footer(text = f"Requested by {interaction.user}", icon_url = interaction.user.avatar.url if interaction.user.avatar else None)
 
 		await interaction.send(embed = embed)
 	
@@ -167,7 +168,37 @@ class VarietyCommands(commands.Cog, name = "Variety", description = "Commands of
 
 		embed.set_thumbnail(url = member.avatar.url if member.avatar else None)
 		embed.set_author(name = "Killer Bot | User Information", icon_url = self.bot.user.avatar.url)
-		embed.set_footer(text = f"Requested by {interaction.user}", icon_url = interaction.user.avatar.url)
+		embed.set_footer(text = f"Requested by {interaction.user}", icon_url = interaction.user.avatar.url if interaction.user.avatar else None)
+
+		await interaction.send(embed = embed)
+
+	@nextcord.slash_command(name = "roleinfo", description = "Shows information about a role.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
+	async def roleinfo_command(
+		self, 
+		interaction: nextcord.Interaction, 
+		role: nextcord.Role =  nextcord.SlashOption(
+			name = "role",
+			description = "The role that you want to show info of.",
+			required = True
+		)
+	):
+		if not role:
+			return await interaction.send("Please specifiy a role to show info of.", ephemeral = True)
+
+		guild_role = interaction.guild.get_role(role.id)
+
+		embed = nextcord.Embed(
+			color = guild_role.color or nextcord.Color.blurple()
+		)
+
+		embed.add_field(name = "Name", value = guild_role.name, inline = True)
+		embed.add_field(name = "ID", value = guild_role.id, inline = True)	
+		embed.add_field(name = "Created at", value = f"{guild_role.created_at.strftime('%d/%m/%Y, %I:%M %P')} (<t:{round(guild_role.created_at.timestamp())}:R>)", inline = False)
+		embed.add_field(name = "Members", value = trim("\n".join([member.mention for member in guild_role.members]), 1024), inline = False)
+		embed.add_field(name = "Other", value = f"Managed = {'True' if guild_role.is_bot_managed() else 'False'}\nAssignable = {'True' if guild_role.is_assignable() else 'False'}\nDefault = {'True' if guild_role.is_default() else 'False'}\nIntegration = {'True' if guild_role.is_integration() else 'False'}\nBooster = {'True' if guild_role.is_premium_subscriber() else 'False'}", inline = False)
+		
+		embed.set_author(name = "Killer Bot | User Information", icon_url = self.bot.user.avatar.url)
+		embed.set_footer(text = f"Requested by {interaction.user}", icon_url = interaction.user.avatar.url if interaction.user.avatar else None)
 
 		await interaction.send(embed = embed)
 

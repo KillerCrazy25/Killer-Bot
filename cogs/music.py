@@ -252,7 +252,6 @@ class Music(commands.Cog):
 			await player.connect(interaction.user.voice.channel)
 		else:
 			vc: wavelink.Player = interaction.guild.voice_client
-
 		try:
 			await vc.play(search)
 		except:
