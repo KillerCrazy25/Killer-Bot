@@ -91,10 +91,14 @@ class EmbedBuilder:
 	# Match Info Embed Builder
 	async def match_embed(self, match: Match, summoner: Summoner, region: str) -> Embed:
 		# Getting teams and teams information
-		blue_team = get_match_teams(match.id, region)[0]
-		red_team = get_match_teams(match.id, region)[1]
-		blue_info = get_team_info(match.id, region, 100)
-		red_info = get_team_info(match.id, region, 200)
+		match_id = format_match_id(match.id, region)
+
+		print(f"REGION: {region}")
+
+		blue_team = get_match_teams(match_id, region)[0]
+		red_team = get_match_teams(match_id, region)[1]
+		blue_info = get_team_info(match_id, region, 100)
+		red_info = get_team_info(match_id, region, 200)
 		# Getting team's players
 		blue_team_players = get_team_players(blue_team)
 		red_team_players = get_team_players(red_team)
@@ -105,7 +109,7 @@ class EmbedBuilder:
 		blue_bans = get_team_bans(blue_info)
 		red_bans = get_team_bans(red_info)
 		# Getting match queue and map
-		map_ = get_map_name(get_map_id(match.id, region))
+		map_ = get_map_name(get_map_id(match_id, region))
 		queue = match.queue.value.replace("_", " ").title()
 
 		blue_stats = get_match_stats(match)[0]

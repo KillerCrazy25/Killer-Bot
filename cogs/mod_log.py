@@ -1089,12 +1089,9 @@ class ModLog(commands.Cog, name = "ModLog", description = "Mod Log module."):
 		if not message.content: return
 
 		send_channel = await get_modlog_channel(message.guild.id)
-		print(send_channel)
 		if send_channel[0]:
 			send_channel = self.bot.get_channel(send_channel[0])
-			print(send_channel)
 		else:
-			print(send_channel)
 			return
 
 		# Embed Builder

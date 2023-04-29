@@ -12,7 +12,7 @@ from typing import List
 watcher = LolWatcher(RIOT_TOKEN)
 cass.set_riot_api_key(RIOT_TOKEN)
 
-def get_map_id(match_id : int, region : str) -> str:
+def get_map_id(match_id, region : str) -> str:
 	"""Get map id of a match."""
 	try:
 		region_ = from_cass_to_riot(region)
@@ -40,7 +40,7 @@ def get_teams_info(match_id : int, region : str) -> List[Dict]:
 
 	return teams
 
-def get_team_info(match_id : int, region : str, team_id : int) -> List:
+def get_team_info(match_id, region : str, team_id) -> List:
 	"""Get team information."""
 	try:
 		region_ = from_cass_to_riot(region)
@@ -86,7 +86,7 @@ def get_last_match(name : str, region : str):
 
 	return match_history[0]
 
-def get_match_info(match_id : int, region : str):
+def get_match_info(match_id, region : str):
 	try:
 		region_ = from_cass_to_riot(region)
 	except KeyError:
@@ -96,7 +96,7 @@ def get_match_info(match_id : int, region : str):
 
 	return match
 
-def get_match_participants(match_id : int, region : str):
+def get_match_participants(match_id, region : str):
 	try:
 		region_ = from_cass_to_riot(region)
 	except KeyError:
@@ -133,7 +133,7 @@ def get_champions_played(name : str, region : str) -> Dict:
 		
 	return data
 
-def get_match_teams(match_id : int, region : str) -> tuple:
+def get_match_teams(match_id, region : str) -> tuple:
 	"""
 	Get teams of a match.
 	THE FIRST ONE ALWAYS IS BLUE TEAM.
@@ -163,7 +163,15 @@ def get_team_champions(team) -> List[Champion]:
 
 	return champions
 
-def get_winner_team(match_id : int, region : str) -> str:
+def format_match_id(match_id, region):
+	"""Format a valid match id."""
+	reg = from_cass_to_riot(region)
+
+	formatted_match_id = f"{reg.upper()}_{match_id}"
+
+	return formatted_match_id
+
+def get_winner_team(match_id, region : str) -> str:
 	"""Get winner team of a match."""
 	match = get_match_info(match_id, region)
 	teams = match["info"]["teams"]
@@ -176,7 +184,7 @@ def get_winner_team(match_id : int, region : str) -> str:
 		else:
 			return None
 
-def get_match_map(match_id : int, region : str) -> str:
+def get_match_map(match_id, region : str) -> str:
 	match = get_match_info(match_id, region)
 	map_ = match["info"]["mapId"]
 

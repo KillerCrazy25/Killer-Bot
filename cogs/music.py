@@ -26,16 +26,17 @@ class Music(commands.Cog):
 	# Create Nodes Function
 	async def create_nodes(self):
 		await self.bot.wait_until_ready()
-		await wavelink.NodePool.create_node(bot = self.bot, host = LAVALINK_HOST, port = LAVALINK_PORT, password = LAVALINK_PASSWORD, https = False)
+		node: wavelink.Node = wavelink.Node(uri = "lava1.horizxon.studio:80", password = "horizxon.studio")
+		await wavelink.NodePool.connect(client = self.bot, nodes = [node])
 
 	# Wavelink Node Ready Event
 	@commands.Cog.listener()
 	async def on_wavelink_node_ready(self, node: wavelink.Node):
-		logger.info(f"Node <{node.identifier}> is now Ready!")
+		logger.info(f"Node <{node.id}> is now Ready!")
 
 	# Wavelink Track Start Event
 	@commands.Cog.listener()
-	async def on_wavelink_track_start(self, player: wavelink.Player, track: wavelink.Track):
+	async def on_wavelink_track_start(self, player: wavelink.Player, track: wavelink.YouTubeTrack):
 		try:
 			self.queue.pop(0)
 		except:
@@ -43,10 +44,10 @@ class Music(commands.Cog):
 
 	# Wavelink Track Start Event
 	@commands.Cog.listener()
-	async def on_wavelink_track_end(self, player: wavelink.Player, track: wavelink.Track, reason):
+	async def on_wavelink_track_end(self, player: wavelink.Player, track: wavelink.YouTubeTrack, reason):
 		if str(reason) == "FINISHED":
 			if not len(self.queue) == 0:
-				next_track: wavelink.Track = self.queue[0]
+				next_track: wavelink.YouTubeTrack = self.queue[0]
 				channel = self.bot.get_channel(self.playing_text_channel)
 
 				try:
@@ -119,7 +120,7 @@ class Music(commands.Cog):
 	@nextcord.slash_command(name = "play", description = "Play a youtube track in the voice channel that the bot is connected.", guild_ids = [MAIN_GUILD_ID, TESTING_GUILD_ID])
 	async def play_command(self, interaction: nextcord.Interaction, *, search: str = nextcord.SlashOption(name = "search", description = "The track that you want to play.", required = True)):
 		try:
-			search = await wavelink.YouTubeTrack.search(query=search, return_first=True)
+			search = await wavelink.YouTubeTrack.search(search, return_first = True)
 		except:
 			return await interaction.send(
 				embed = nextcord.Embed(
@@ -204,7 +205,7 @@ class Music(commands.Cog):
 			return await interaction.send(embed = embed)
 		else:
 			if not len(self.queue) == 0:
-				track: wavelink.Track = self.queue[0]
+				track: wavelink.YouTubeTrack = self.queue[0]
 				player.play(track)
 				return await interaction.send(
 					embed = nextcord.Embed(
@@ -376,7 +377,7 @@ class Music(commands.Cog):
 		player = node.get_player(interaction.guild)
 
 		if not len(self.queue) == 0:
-			next_track: wavelink.Track = self.queue[0]
+			next_track: wavelink.YouTubeTrack = self.queue[0]
 			try:
 				await player.play(next_track)
 			except:

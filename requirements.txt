@@ -6,3 +6,5 @@ matplotlib
 wavelink
 riotwatcher
 aiosqlite
+colorlog
+requests_html
