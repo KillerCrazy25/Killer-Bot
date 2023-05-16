@@ -41,3 +41,17 @@ async def get_all_issues(rows: int):
 		async with db.cursor() as cursor:
 			await cursor.execute("SELECT * FROM issues")
 			return await cursor.fetchmany(rows)
+
+async def get_gym_profile(profile_id: int):
+	"""Gets the given gym profile from the database."""
+	async with aiosqlite.connect("main.db") as db:
+		async with db.cursor() as cursor:
+			await cursor.execute("SELECT * FROM gymprofiles WHERE profile_id = ?", (profile_id,))
+			return await cursor.fetchone()
+
+async def get_gym_routine(routine_id: str):
+	"""Gets the given gym routine from the database."""
+	async with aiosqlite.connect("main.db") as db:
+		async with db.cursor() as cursor:
+			await cursor.execute("SELECT * FROM gymroutines WHERE routine_id = ?", (routine_id,))
+			return await cursor.fetchone()
